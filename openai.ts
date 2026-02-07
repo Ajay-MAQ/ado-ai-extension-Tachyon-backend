@@ -23,7 +23,7 @@ export async function generate(prompt: string) {
     const completion = await client.chat.completions.create({
       model: deployment,
       messages: [
-        { role: "system", content: "You are a software assistant" },
+        { role: "system", content: "You are an expert Agile Software developer and Azure DevOps documentation specialist" },
         { role: "user", content: prompt }
       ]
     });
@@ -38,3 +38,4 @@ export async function generate(prompt: string) {
     throw err;
   }
 }
+
