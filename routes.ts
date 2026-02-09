@@ -1,9 +1,26 @@
 import { Router } from "express";
+import axios from "axios";
 import { authMiddleware } from "./middleware";
 import { generate } from "./openai";
-import axios from "axios";
 
 const router = Router();
+
+/* ===============================
+   TYPES
+================================ */
+
+interface CreateTaskInput {
+  title: string;
+  description: string;
+}
+
+interface AdoWorkItemResponse {
+  id: number;
+}
+
+/* ===============================
+   ANALYZE (LLM GENERATION)
+================================ */
 
 router.post("/analyze", authMiddleware, async (req, res) => {
   try {
@@ -13,50 +30,38 @@ router.post("/analyze", authMiddleware, async (req, res) => {
       return res.status(400).json({ error: "Invalid input" });
     }
 
-    console.log("Received request:", { title, type, action });
-
-    const prompt = buildPrompt(
-      title,
-      description,
-      type,
-      action
-    );
-
-    console.log("Generated prompt:", prompt);
-
+    const prompt = buildPrompt(title, description, type, action);
     const output = await generate(prompt);
 
     res.json({ output });
-
   } catch (err) {
-    console.error(err);
+    console.error("Analyze error:", err);
     res.status(500).json({ error: "AI failure" });
   }
 });
 
-
-
+/* ===============================
+   CREATE TASKS UNDER USER STORY
+================================ */
 
 router.post("/create-tasks", authMiddleware, async (req, res) => {
   try {
-    const {
-      org,
-      project,
-      userStoryId,
-      tasks
-    } = req.body;
+    const { org, project, userStoryId, tasks } = req.body;
 
-    if (!org || !project || !userStoryId || !tasks?.length) {
+    if (!org || !project || !userStoryId || !Array.isArray(tasks)) {
       return res.status(400).json({ error: "Invalid payload" });
     }
 
-    const pat = process.env.ADO_PAT!;
+    const pat = process.env.ADO_PAT;
+    if (!pat) {
+      return res.status(500).json({ error: "ADO_PAT not configured" });
+    }
+
     const auth = Buffer.from(":" + pat).toString("base64");
+    const createdTasks: number[] = [];
 
-    const createdTasks = [];
-
-    for (const task of tasks) {
-      const response = await axios.post(
+    for (const task of tasks as CreateTaskInput[]) {
+      const response = await axios.post<AdoWorkItemResponse>(
         `https://dev.azure.com/${org}/${project}/_apis/wit/workitems/$Task?api-version=7.0`,
         [
           {
@@ -95,13 +100,14 @@ router.post("/create-tasks", authMiddleware, async (req, res) => {
     });
 
   } catch (err) {
-    console.error(err);
+    console.error("Create tasks error:", err);
     res.status(500).json({ error: "Task creation failed" });
   }
 });
 
-
-
+/* ===============================
+   PROMPT BUILDER
+================================ */
 
 function buildPrompt(
   title: string,
@@ -112,45 +118,44 @@ function buildPrompt(
   switch (action) {
 
     case "tasks":
-        return `
-      You are a Senior Azure DevOps Engineer.
+      return `
+You are a Senior Azure DevOps Engineer.
 
-      Break the following User Story into implementation tasks.
+Break the following User Story into implementation tasks.
 
-      Rules:
-      - Return ONLY valid JSON
-      - No markdown
-      - No explanations
+Rules:
+- Return ONLY valid JSON
+- No markdown
+- No explanations
 
-      JSON format:
-      {
-        "tasks": [
-          {
-            "title": "",
-            "description": ""
-          }
-        ]
-      }
+JSON format:
+{
+  "tasks": [
+    {
+      "title": "Task title",
+      "description": "Task description"
+    }
+  ]
+}
 
-      User Story Title:
-      ${title}
+User Story Title:
+${title}
 
-      User Story Description:
-      ${desc}
-      `;
-
+User Story Description:
+${desc}
+`;
 
     case "description":
-      return `Write a clear, professional, and concise Azure DevOps description only for the following ${type}: ${title}.`;
+      return `Write a clear, professional Azure DevOps description for the following ${type}: ${title}`;
 
     case "criteria":
-      return `Generate a clear, professional, and concise Azure DevOps acceptance criteria only for: ${title}.`;
+      return `Generate professional acceptance criteria for the following User Story: ${title}`;
 
     case "tests":
-      return `You are a Senior QA Engineer. Create comprehensive test cases for the : ${title}`;
+      return `You are a Senior QA Engineer. Create test cases for: ${title}`;
 
     case "bug":
-      return `Summarize bug report: ${desc}`;
+      return `Summarize this bug clearly and professionally: ${desc}`;
 
     default:
       return title;
