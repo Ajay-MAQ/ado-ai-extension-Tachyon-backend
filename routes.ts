@@ -42,10 +42,10 @@ function buildPrompt(
   switch (action) {
 
     case "description":
-      return `Write a clear, professional, and concise Azure DevOps description for the following ${type}: ${title}`;
+      return `Write a clear, professional, and concise Azure DevOps description only for the following ${type}: ${title}.`;
 
     case "criteria":
-      return `Generate a clear, professional, and concise Azure DevOps acceptance criteria for: ${title}`;
+      return `Generate a clear, professional, and concise Azure DevOps acceptance criteria only for: ${title}.`;
 
     case "tests":
       return `You are a Senior QA Engineer. Create comprehensive test cases for the : ${title}`;
@@ -59,4 +59,3 @@ function buildPrompt(
 }
 
 export default router;
-
