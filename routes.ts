@@ -63,7 +63,7 @@ router.post("/create-tasks", authMiddleware, async (req, res) => {
     const createdTasks: number[] = [];
 
     for (const task of tasks as CreateTaskInput[]) {
-      const response = await axios.post<AdoWorkItemResponse>(
+      const response = await axios.patch<AdoWorkItemResponse>(
         `https://dev.azure.com/${org}/${project}/_apis/wit/workitems/$Task?api-version=7.0`,
         [
           {
@@ -166,3 +166,4 @@ ${desc}
 }
 
 export default router;
+
