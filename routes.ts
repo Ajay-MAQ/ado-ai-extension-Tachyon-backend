@@ -146,10 +146,10 @@ ${desc}
 `;
 
     case "description":
-      return `Write a clear, professional Azure DevOps description for the following ${type}: ${title}`;
+      return `Write a clear, professional Azure DevOps description only for the following ${type}: ${title}`;
 
     case "criteria":
-      return `Generate professional acceptance criteria for the following User Story: ${title}`;
+      return `Generate professional acceptance criteria only for the following User Story: ${title}`;
 
     case "tests":
       return `You are a Senior QA Engineer. Create test cases for: ${title}`;
@@ -163,3 +163,4 @@ ${desc}
 }
 
 export default router;
+
