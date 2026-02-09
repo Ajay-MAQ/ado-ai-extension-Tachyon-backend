@@ -160,17 +160,7 @@ router.post("/create-testcases", authMiddleware, async (req, res) => {
           },
           {
             op: "add",
-            path: "/fields/Microsoft.VSTS.Common.Severity",
-            value: "3 - Medium"
-          },
-          {
-            op: "add",
-            path: "/fields/Microsoft.VSTS.Common.Priority",
-            value: 2
-          },
-          {
-            op: "add",
-            path: "/fields/Microsoft.VSTS.Common.TestSteps",
+            path: "/fields/Microsoft.VSTS.Common.Steps",
             value: stepsXml
           },
           {
