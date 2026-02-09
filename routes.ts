@@ -160,7 +160,7 @@ router.post("/create-testcases", authMiddleware, async (req, res) => {
           },
           {
             op: "add",
-            path: "/fields/Microsoft.VSTS.Common.Steps",
+            path: "/fields/Microsoft.VSTS.TCM.Steps",
             value: stepsXml
           },
           {
@@ -289,3 +289,4 @@ function buildPrompt(
 }
 
 export default router;
+
