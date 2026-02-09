@@ -18,6 +18,17 @@ interface AdoWorkItemResponse {
   id: number;
 }
 
+interface AITestStep {
+  action: string;
+  expected: string;
+}
+
+interface AITestCase {
+  title: string;
+  steps: AITestStep[];
+}
+
+
 /* ===============================
    ANALYZE (LLM GENERATION)
 ================================ */
@@ -63,7 +74,7 @@ router.post("/create-tasks", authMiddleware, async (req, res) => {
     const createdTasks: number[] = [];
 
     for (const task of tasks as CreateTaskInput[]) {
-      const response = await axios.patch<AdoWorkItemResponse>(
+      const response = await axios.post<AdoWorkItemResponse>(
         `https://dev.azure.com/${org}/${project}/_apis/wit/workitems/$Task?api-version=7.0`,
         [
           {
@@ -108,6 +119,93 @@ router.post("/create-tasks", authMiddleware, async (req, res) => {
   }
 });
 
+
+
+router.post("/create-testcases", authMiddleware, async (req, res) => {
+  try {
+    const { org, project, userStoryId, testCases } = req.body;
+
+    if (!org || !project || !userStoryId || !Array.isArray(testCases)) {
+      return res.status(400).json({ error: "Invalid payload" });
+    }
+
+    const pat = process.env.ADO_PAT!;
+    const auth = Buffer.from(":" + pat).toString("base64");
+
+    const createdTestCases: number[] = [];
+
+    for (const testCase of testCases as AITestCase[]) {
+
+      // Convert steps to ADO XML format
+      const stepsXml =
+        `<steps id="0">` +
+        testCase.steps
+          .map(
+            (s, i) => `
+            <step id="${i + 1}" type="ActionStep">
+              <parameterizedString isformatted="true">${s.action}</parameterizedString>
+              <parameterizedString isformatted="true">${s.expected}</parameterizedString>
+            </step>`
+          )
+          .join("") +
+        `</steps>`;
+
+      const response = await axios.patch<{ id: number }>(
+        `https://dev.azure.com/${org}/${project}/_apis/wit/workitems/$Test%20Case?api-version=7.0`,
+        [
+          {
+            op: "add",
+            path: "/fields/System.Title",
+            value: testCase.title
+          },
+          {
+            op: "add",
+            path: "/fields/Microsoft.VSTS.Common.Severity",
+            value: "3 - Medium"
+          },
+          {
+            op: "add",
+            path: "/fields/Microsoft.VSTS.Common.Priority",
+            value: 2
+          },
+          {
+            op: "add",
+            path: "/fields/Microsoft.VSTS.Common.TestSteps",
+            value: stepsXml
+          },
+          {
+            op: "add",
+            path: "/relations/-",
+            value: {
+              rel: "System.LinkTypes.Hierarchy-Reverse",
+              url: `https://dev.azure.com/${org}/${project}/_apis/wit/workItems/${userStoryId}`
+            }
+          }
+        ],
+        {
+          headers: {
+            "Content-Type": "application/json-patch+json",
+            Authorization: `Basic ${auth}`
+          }
+        }
+      );
+
+      createdTestCases.push(response.data.id);
+    }
+
+    res.json({ success: true, createdTestCases });
+
+  } catch (err) {
+    console.error("Create test cases error:", err);
+    res.status(500).json({ error: "Test case creation failed" });
+  }
+});
+
+
+
+
+
+
 /* ===============================
    PROMPT BUILDER
 ================================ */
@@ -120,33 +218,68 @@ function buildPrompt(
 ) {
   switch (action) {
 
-    case "tasks":
-      return `
-You are a Senior Azure DevOps Engineer.
+        case "tasks":
+          return `
+    You are a Senior Azure DevOps Engineer.
 
-Break the following User Story into implementation tasks.
+    Break the following User Story into implementation tasks.
 
-Rules:
-- Return ONLY valid JSON
-- No markdown
-- No explanations
+    Rules:
+    - Return ONLY valid JSON
+    - No markdown
+    - No explanations
 
-JSON format:
-{
-  "tasks": [
+    JSON format:
     {
-      "title": "Task title",
-      "description": "Task description"
+      "tasks": [
+        {
+          "title": "Task title",
+          "description": "Task description"
+        }
+      ]
     }
-  ]
-}
 
-User Story Title:
-${title}
+    User Story Title:
+    ${title}
 
-User Story Description:
-${desc}
-`;
+    User Story Description:
+    ${desc}
+    `;
+
+
+      case "testcases":
+        return `
+      You are a Senior QA Engineer.
+
+      Generate Azure DevOps Test Cases for the following User Story.
+
+      Rules:
+      - Return ONLY valid JSON
+      - No markdown
+      - No explanations
+
+      JSON format:
+      {
+        "testCases": [
+          {
+            "title": "",
+            "steps": [
+              {
+                "action": "",
+                "expected": ""
+              }
+            ]
+          }
+        ]
+      }
+
+      User Story Title:
+      ${title}
+
+      User Story Description:
+      ${desc}
+      `;
+
 
     case "description":
       return `Write a clear, professional Azure DevOps description only for the following ${type}: ${title}`;
@@ -166,4 +299,3 @@ ${desc}
 }
 
 export default router;
-
