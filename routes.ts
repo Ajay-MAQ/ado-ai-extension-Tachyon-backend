@@ -65,7 +65,7 @@ router.post("/create-tasks", authMiddleware, async (req, res) => {
     }
 
     const pat = process.env.ADO_PAT;
-    console.log("Using ADO_PAT:", !!pat);
+    
     if (!pat) {
       return res.status(500).json({ error: "ADO_PAT not configured" });
     }
@@ -104,7 +104,7 @@ router.post("/create-tasks", authMiddleware, async (req, res) => {
         }
       );
 
-      console.log(`Task created with ID: ${response.data.id}`);
+   
       createdTasks.push(response.data.id);
     }
 
@@ -289,4 +289,5 @@ function buildPrompt(
 }
 
 export default router;
+
 
