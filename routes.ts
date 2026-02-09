@@ -47,12 +47,14 @@ router.post("/analyze", authMiddleware, async (req, res) => {
 router.post("/create-tasks", authMiddleware, async (req, res) => {
   try {
     const { org, project, userStoryId, tasks } = req.body;
+    console.log("Create tasks request received with payload:", req.body);
 
     if (!org || !project || !userStoryId || !Array.isArray(tasks)) {
       return res.status(400).json({ error: "Invalid payload" });
     }
 
     const pat = process.env.ADO_PAT;
+    console.log("Using ADO_PAT:", !!pat);
     if (!pat) {
       return res.status(500).json({ error: "ADO_PAT not configured" });
     }
@@ -91,6 +93,7 @@ router.post("/create-tasks", authMiddleware, async (req, res) => {
         }
       );
 
+      console.log(`Task created with ID: ${response.data.id}`);
       createdTasks.push(response.data.id);
     }
 
@@ -163,4 +166,3 @@ ${desc}
 }
 
 export default router;
-
