@@ -64,13 +64,22 @@ router.post("/create-tasks", authMiddleware, async (req, res) => {
       return res.status(400).json({ error: "Invalid payload" });
     }
 
-    const pat = process.env.ADO_PAT;
-    
-    if (!pat) {
-      return res.status(500).json({ error: "ADO_PAT not configured" });
+    // const pat = process.env.ADO_PAT;
+    // console.log("Using ADO_PAT:", !!pat);
+    // if (!pat) {
+    //   return res.status(500).json({ error: "ADO_PAT not configured" });
+    // }
+
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Missing token" });
     }
 
-    const auth = Buffer.from(":" + pat).toString("base64");
+    const accessToken = authHeader.replace("Bearer ", "");
+
+
+    // const auth = Buffer.from(":" + pat).toString("base64");
     const createdTasks: number[] = [];
 
     for (const task of tasks as CreateTaskInput[]) {
@@ -99,12 +108,12 @@ router.post("/create-tasks", authMiddleware, async (req, res) => {
         {
           headers: {
             "Content-Type": "application/json-patch+json",
-            Authorization: `Basic ${auth}`
+            Authorization: `Bearer ${accessToken}`
           }
         }
       );
 
-   
+      
       createdTasks.push(response.data.id);
     }
 
@@ -129,8 +138,13 @@ router.post("/create-testcases", authMiddleware, async (req, res) => {
       return res.status(400).json({ error: "Invalid payload" });
     }
 
-    const pat = process.env.ADO_PAT!;
-    const auth = Buffer.from(":" + pat).toString("base64");
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Missing token" });
+    }
+
+    const accessToken = authHeader.replace("Bearer ", "");
 
     const createdTestCases: number[] = [];
 
@@ -175,7 +189,7 @@ router.post("/create-testcases", authMiddleware, async (req, res) => {
         {
           headers: {
             "Content-Type": "application/json-patch+json",
-            Authorization: `Basic ${auth}`
+            Authorization: `Bearer ${accessToken}`
           }
         }
       );
@@ -289,5 +303,3 @@ function buildPrompt(
 }
 
 export default router;
-
-
