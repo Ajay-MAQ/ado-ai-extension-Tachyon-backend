@@ -286,10 +286,11 @@ function buildPrompt(
 
 
     case "description":
-      return `Write a clear, professional Azure DevOps description only for the following ${type}: ${title}`;
+      return `Write a clear, professional Azure DevOps description only for the following ${type}: ${title}. Directly give descriptiion no need of heading`;
 
     case "criteria":
-      return `Generate professional acceptance criteria only for the following User Story: ${title}`;
+      return `Generate professional acceptance criteria only for the following User Story: ${title}. Directly give Acceptance criteria without heading in point vice fashion such that when I insert into azure ado acceptance criteria it should visible in the point vice fashion`;
+
 
     case "tests":
       return `You are a Senior QA Engineer. Create test cases for: ${title}`;
@@ -303,3 +304,4 @@ function buildPrompt(
 }
 
 export default router;
+
