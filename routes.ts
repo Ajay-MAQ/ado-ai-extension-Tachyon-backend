@@ -289,7 +289,7 @@ function buildPrompt(
       return `Write a clear, professional Azure DevOps description only for the following ${type}: ${title}. Directly give descriptiion no need of heading`;
 
     case "criteria":
-      return `Generate professional acceptance criteria only for the following User Story: ${title}. Directly give Acceptance criteria without heading and insert line break html tag after each point`;
+      return `Generate professional acceptance criteria only for the following User Story: ${title}. Directly give Acceptance criteria without heading,give in bullet points and insert line break html tag after each point`;
 
 
     case "tests":
@@ -304,5 +304,6 @@ function buildPrompt(
 }
 
 export default router;
+
 
 
