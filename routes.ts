@@ -301,7 +301,7 @@ router.post("/create-stories", authMiddleware, async (req, res) => {
         });
       }
 
-      const response = await axios.patch<{ id: number }>(
+      const response = await axios.post<{ id: number }>(
         `https://dev.azure.com/${org}/${project}/_apis/wit/workitems/$User%20Story?api-version=7.0`,
         operations,
         {
@@ -465,3 +465,4 @@ function buildPrompt(
 }
 
 export default router;
+
