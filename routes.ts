@@ -229,7 +229,9 @@ router.post("/create-stories", authMiddleware, async (req, res) => {
         [
           { op: "add", path: "/fields/System.Title", value: story.title },
           { op: "add", path: "/fields/System.Description", value: story.description },
-          { op: "add", path: "/fields/Microsoft.VSTS.Common.Priority", value: story.rank },
+          { op: "add", path: "/fields/Microsoft.VSTS.Scheduling.StoryPoints", value: story.storyPoints },
+          { op: "add", path: "/fields/Microsoft.VSTS.Common.Priority", value: story.priority },
+          { op: "add", path: "/fields/Microsoft.VSTS.Common.Risk", value: story.risk },
           {
             op: "add",
             path: "/relations/-",
@@ -465,4 +467,3 @@ function buildPrompt(
 }
 
 export default router;
-
