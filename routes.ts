@@ -206,6 +206,57 @@ router.post("/create-testcases", authMiddleware, async (req, res) => {
 });
 
 
+// router.post("/create-stories", authMiddleware, async (req, res) => {
+//   try {
+//     const { org, project, featureId, stories } = req.body;
+
+//     if (!org || !project || !featureId || !Array.isArray(stories)) {
+//       return res.status(400).json({ error: "Invalid payload" });
+//     }
+
+//     const authHeader = req.headers.authorization;
+//     if (!authHeader?.startsWith("Bearer ")) {
+//       return res.status(401).json({ error: "Missing token" });
+//     }
+
+//     const accessToken = authHeader.replace("Bearer ", "");
+
+//     const createdStories: number[] = [];
+
+//     for (const story of stories) {
+//       const response = await axios.post<AdoWorkItemResponse>(
+//         `https://dev.azure.com/${org}/${project}/_apis/wit/workitems/$User%20Story?api-version=7.0`,
+//         [
+//           { op: "add", path: "/fields/System.Title", value: story.title },
+//           { op: "add", path: "/fields/System.Description", value: story.description },
+//           { op: "add", path: "/fields/Microsoft.VSTS.Common.Priority", value: story.rank },
+//           {
+//             op: "add",
+//             path: "/relations/-",
+//             value: {
+//               rel: "System.LinkTypes.Hierarchy-Reverse",
+//               url: `https://dev.azure.com/${org}/${project}/_apis/wit/workItems/${featureId}`,
+//             },
+//           },
+//         ],
+//         {
+//           headers: {
+//             "Content-Type": "application/json-patch+json",
+//             Authorization: `Bearer ${accessToken}`,
+//           },
+//         }
+//       );
+
+//       createdStories.push(response.data.id);
+//     }
+
+//     res.json({ success: true, createdStories });
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ error: "Story creation failed" });
+//   }
+// });
+
 router.post("/create-stories", authMiddleware, async (req, res) => {
   try {
     const { org, project, featureId, stories } = req.body;
@@ -221,29 +272,43 @@ router.post("/create-stories", authMiddleware, async (req, res) => {
 
     const accessToken = authHeader.replace("Bearer ", "");
 
+
     const createdStories: number[] = [];
 
     for (const story of stories) {
-      const response = await axios.post<AdoWorkItemResponse>(
+      const operations: any[] = [
+        { op: "add", path: "/fields/System.Title", value: story.title },
+        { op: "add", path: "/fields/System.Description", value: story.description },
+        { op: "add", path: "/fields/Microsoft.VSTS.Scheduling.StoryPoints", value: story.storyPoints },
+        { op: "add", path: "/fields/Microsoft.VSTS.Common.Priority", value: story.priority },
+        { op: "add", path: "/fields/Microsoft.VSTS.Common.Risk", value: story.risk },
+        {
+          op: "add",
+          path: "/relations/-",
+          value: {
+            rel: "System.LinkTypes.Hierarchy-Reverse",
+            url: `https://dev.azure.com/${org}/${project}/_apis/wit/workItems/${featureId}`
+          }
+        }
+      ];
+
+      // ✅ Dependency → Discussion tab
+      if (story.dependency) {
+        operations.push({
+          op: "add",
+          path: "/fields/System.History",
+          value: `Dependency: ${story.dependency}`
+        });
+      }
+
+      const response = await axios.patch<{ id: number }>(
         `https://dev.azure.com/${org}/${project}/_apis/wit/workitems/$User%20Story?api-version=7.0`,
-        [
-          { op: "add", path: "/fields/System.Title", value: story.title },
-          { op: "add", path: "/fields/System.Description", value: story.description },
-          { op: "add", path: "/fields/Microsoft.VSTS.Common.Priority", value: story.rank },
-          {
-            op: "add",
-            path: "/relations/-",
-            value: {
-              rel: "System.LinkTypes.Hierarchy-Reverse",
-              url: `https://dev.azure.com/${org}/${project}/_apis/wit/workItems/${featureId}`,
-            },
-          },
-        ],
+        operations,
         {
           headers: {
             "Content-Type": "application/json-patch+json",
-            Authorization: `Bearer ${accessToken}`,
-          },
+            Authorization: `Bearer ${accessToken}`
+          }
         }
       );
 
@@ -251,14 +316,12 @@ router.post("/create-stories", authMiddleware, async (req, res) => {
     }
 
     res.json({ success: true, createdStories });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Story creation failed" });
   }
 });
-
-
-
 
 
 /* ===============================
@@ -281,10 +344,19 @@ function buildPrompt(
     Generate Agile User Stories for the following Feature.
 
     Rules:
-    - Follow Agile best practices
+    - Follow Agile best practices (INVEST)
     - Stories should be as independent as possible
     - Minimize dependencies unless unavoidable
-    - Return ONLY valid JSON
+    - Each story must be <= 10 story points
+    - 1 Story Point = 8 hours
+    - Estimate story points relatively
+    - Assign:
+      - storyPoints (number, max 10)
+      - rank (execution order)
+      - priority = Based on rank + dependency + business value
+      - risk (numeric: 1=Low, 2=Medium, 3=High)
+
+    Return ONLY valid JSON.
 
     JSON format:
     {
@@ -292,7 +364,10 @@ function buildPrompt(
         {
           "title": "",
           "description": "",
+          "storyPoints": 3,
           "rank": 1,
+          "priority": 1,
+          "risk": 2,
           "dependency": ""
         }
       ]
@@ -307,34 +382,35 @@ function buildPrompt(
 
 
 
+      case "tasks":
+        return `
+      You are a Senior Azure DevOps Engineer.
 
-    case "tasks":
-          return `
-    You are a Senior Azure DevOps Engineer.
+      Break the following User Story into implementation tasks.
 
-    Break the following User Story into implementation tasks.
+      Rules:
+      - Consider story complexity
+      - Ensure tasks align with estimated Story Points
+      - Avoid over-fragmentation
+      - Return ONLY valid JSON
 
-    Rules:
-    - Return ONLY valid JSON
-    - No markdown
-    - No explanations
+      JSON format:
+      {
+        "tasks": [
+          {
+            "title": "",
+            "description": ""
+          }
+        ]
+      }
 
-    JSON format:
-    {
-      "tasks": [
-        {
-          "title": "Task title",
-          "description": "Task description"
-        }
-      ]
-    }
+      User Story Title:
+      ${title}
 
-    User Story Title:
-    ${title}
+      User Story Description:
+      ${desc}
+      `;
 
-    User Story Description:
-    ${desc}
-    `;
 
 
       case "testcases":
