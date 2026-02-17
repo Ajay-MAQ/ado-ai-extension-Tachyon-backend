@@ -206,6 +206,57 @@ router.post("/create-testcases", authMiddleware, async (req, res) => {
 });
 
 
+router.post("/create-stories", authMiddleware, async (req, res) => {
+  try {
+    const { org, project, featureId, stories } = req.body;
+
+    if (!org || !project || !featureId || !Array.isArray(stories)) {
+      return res.status(400).json({ error: "Invalid payload" });
+    }
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Missing token" });
+    }
+
+    const accessToken = authHeader.replace("Bearer ", "");
+
+    const createdStories: number[] = [];
+
+    for (const story of stories) {
+      const response = await axios.post<AdoWorkItemResponse>(
+        `https://dev.azure.com/${org}/${project}/_apis/wit/workitems/$User%20Story?api-version=7.0`,
+        [
+          { op: "add", path: "/fields/System.Title", value: story.title },
+          { op: "add", path: "/fields/System.Description", value: story.description },
+          { op: "add", path: "/fields/Microsoft.VSTS.Common.Priority", value: story.rank },
+          {
+            op: "add",
+            path: "/relations/-",
+            value: {
+              rel: "System.LinkTypes.Hierarchy-Reverse",
+              url: `https://dev.azure.com/${org}/${project}/_apis/wit/workItems/${featureId}`,
+            },
+          },
+        ],
+        {
+          headers: {
+            "Content-Type": "application/json-patch+json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      createdStories.push(response.data.id);
+    }
+
+    res.json({ success: true, createdStories });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Story creation failed" });
+  }
+});
+
 
 
 
@@ -222,7 +273,42 @@ function buildPrompt(
 ) {
   switch (action) {
 
-        case "tasks":
+
+    case "stories":
+      return `
+    You are a Senior Product Owner.
+
+    Generate Agile User Stories for the following Feature.
+
+    Rules:
+    - Follow Agile best practices
+    - Stories should be as independent as possible
+    - Minimize dependencies unless unavoidable
+    - Return ONLY valid JSON
+
+    JSON format:
+    {
+      "userStories": [
+        {
+          "title": "",
+          "description": "",
+          "rank": 1,
+          "dependency": ""
+        }
+      ]
+    }
+
+    Feature Title:
+    ${title}
+
+    Feature Description:
+    ${desc}
+    `;
+
+
+
+
+    case "tasks":
           return `
     You are a Senior Azure DevOps Engineer.
 
@@ -289,8 +375,7 @@ function buildPrompt(
       return `Write a clear, professional Azure DevOps description only for the following ${type}: ${title}. Directly give descriptiion no need of heading`;
 
     case "criteria":
-      return `Generate professional acceptance criteria only for the following User Story: ${title}. Directly give Acceptance criteria without heading,add hyphen before each point and insert line break html tag after each point`;
-
+      return `Generate professional acceptance criteria only for the following User Story: ${title}. Directly give Acceptance criteria without heading in point vice fashion such that when I insert into azure ado acceptance criteria it should visible in the point vice fashion`;
 
     case "tests":
       return `You are a Senior QA Engineer. Create test cases for: ${title}`;
@@ -304,8 +389,3 @@ function buildPrompt(
 }
 
 export default router;
-
-
-
-
-
