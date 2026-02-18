@@ -28,6 +28,84 @@ interface AITestCase {
   steps: AITestStep[];
 }
 
+interface AdoFeatureResponse {
+  relations?: Array<{ rel: string; url: string }>;
+}
+
+router.get("/feature-stories/:org/:project/:featureId", authMiddleware, async (req, res) => {
+  try {
+    const { org, project, featureId } = req.params;
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Missing token" });
+    }
+
+    const accessToken = authHeader.replace("Bearer ", "");
+
+    // 1️⃣ Get Feature with relations
+    const featureResponse = await axios.get<AdoFeatureResponse>(
+      `https://dev.azure.com/${org}/${project}/_apis/wit/workitems/${featureId}?$expand=relations&api-version=7.0`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      }
+    );
+
+    const relations = featureResponse.data.relations || [];
+
+    // 2️⃣ Extract User Story IDs
+    const storyIds = relations
+      .filter((rel: any) => rel.rel === "System.LinkTypes.Hierarchy-Forward")
+      .map((rel: any) => rel.url.split("/").pop());
+
+    if (!storyIds.length) {
+      return res.json({ stories: [] });
+    }
+
+    // 3️⃣ Batch fetch stories
+    const storiesResponse = await axios.post<{ value: any[] }>(
+      `https://dev.azure.com/${org}/${project}/_apis/wit/workitemsbatch?api-version=7.0`,
+      {
+        ids: storyIds,
+        fields: [
+          "System.Id",
+          "System.Title",
+          "System.Description",
+          "Microsoft.VSTS.Scheduling.StoryPoints",
+          "Microsoft.VSTS.Common.Priority",
+          "Microsoft.VSTS.Common.Risk"
+        ]
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    const stories = storiesResponse.data.value.map((wi: any) => ({
+      id: wi.id,
+      title: wi.fields["System.Title"],
+      description: wi.fields["System.Description"] || "",
+      storyPoints: wi.fields["Microsoft.VSTS.Scheduling.StoryPoints"] || 0,
+      priority: wi.fields["Microsoft.VSTS.Common.Priority"] || 2,
+      risk: wi.fields["Microsoft.VSTS.Common.Risk"] || "Medium"
+    }));
+
+    res.json({ stories });
+
+  } catch (err) {
+    console.error("❌ Fetch stories error:", err);
+    res.status(500).json({ error: "Failed to fetch feature stories" });
+  }
+});
+
+
+
+
+
+
 
 /* ===============================
    ANALYZE (LLM GENERATION)
@@ -35,21 +113,24 @@ interface AITestCase {
 
 router.post("/analyze", authMiddleware, async (req, res) => {
   try {
-    const { title, description, type, action } = req.body;
+    const {title, description, type, action, employees, stories} = req.body;
 
     if (!title || !action) {
-      return res.status(400).json({ error: "Invalid input" });
+      return res.status(400).json({ error: "Missing title or action" });
     }
 
-    const prompt = buildPrompt(title, description, type, action);
+    const prompt = buildPrompt(title, description, type, action, employees, stories);
+
     const output = await generate(prompt);
 
     res.json({ output });
+
   } catch (err) {
-    console.error("Analyze error:", err);
+    console.error("❌ Analyze error:", err);
     res.status(500).json({ error: "AI failure" });
   }
 });
+
 
 /* ===============================
    CREATE TASKS UNDER USER STORY
@@ -206,56 +287,6 @@ router.post("/create-testcases", authMiddleware, async (req, res) => {
 });
 
 
-// router.post("/create-stories", authMiddleware, async (req, res) => {
-//   try {
-//     const { org, project, featureId, stories } = req.body;
-
-//     if (!org || !project || !featureId || !Array.isArray(stories)) {
-//       return res.status(400).json({ error: "Invalid payload" });
-//     }
-
-//     const authHeader = req.headers.authorization;
-//     if (!authHeader?.startsWith("Bearer ")) {
-//       return res.status(401).json({ error: "Missing token" });
-//     }
-
-//     const accessToken = authHeader.replace("Bearer ", "");
-
-//     const createdStories: number[] = [];
-
-//     for (const story of stories) {
-//       const response = await axios.post<AdoWorkItemResponse>(
-//         `https://dev.azure.com/${org}/${project}/_apis/wit/workitems/$User%20Story?api-version=7.0`,
-//         [
-//           { op: "add", path: "/fields/System.Title", value: story.title },
-//           { op: "add", path: "/fields/System.Description", value: story.description },
-//           { op: "add", path: "/fields/Microsoft.VSTS.Common.Priority", value: story.rank },
-//           {
-//             op: "add",
-//             path: "/relations/-",
-//             value: {
-//               rel: "System.LinkTypes.Hierarchy-Reverse",
-//               url: `https://dev.azure.com/${org}/${project}/_apis/wit/workItems/${featureId}`,
-//             },
-//           },
-//         ],
-//         {
-//           headers: {
-//             "Content-Type": "application/json-patch+json",
-//             Authorization: `Bearer ${accessToken}`,
-//           },
-//         }
-//       );
-
-//       createdStories.push(response.data.id);
-//     }
-
-//     res.json({ success: true, createdStories });
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({ error: "Story creation failed" });
-//   }
-// });
 
 router.post("/create-stories", authMiddleware, async (req, res) => {
   try {
@@ -332,9 +363,52 @@ function buildPrompt(
   title: string,
   desc: string,
   type: string,
-  action: string
+  action: string,
+  employees?: number,
+  stories?: any[]
 ) {
   switch (action) {
+
+
+    case "sprintplan":
+          return `
+    You are an Agile Sprint Planning Assistant.
+
+    Inputs:
+    - Sprint = 10 working days
+    - 1 day = 8 hours
+    - 1 Story Point = 8 hours
+    - Capacity per employee per sprint = 10 Story Points
+
+    Employees: ${employees}
+
+    User Stories:
+    ${JSON.stringify(stories, null, 2)}
+
+    Rules:
+    - Plan for 3 sprints:
+      Sprint N, Sprint N+1, Sprint N+2
+    - Respect priority & dependency
+    - If story doesn't fully fit:
+      SPLIT story points across sprints
+    - Carry forward remaining points
+    - Keep realistic workload
+
+    Return ONLY valid JSON:
+
+    {
+      "sprintPlan": {
+        "Sprint N": [],
+        "Sprint N+1": [],
+        "Sprint N+2": []
+      },
+      "summary": {
+        "capacityPerSprint": number,
+        "totalStoryPoints": number
+      }
+    }
+    `;
+
 
 
     case "stories":
@@ -354,7 +428,7 @@ function buildPrompt(
       - storyPoints (number, max 10)
       - rank (execution order)
       - priority = Based on rank + dependency + business value ("type": "integer", "description": "Business importance. 1=must fix; 4=unimportant." and range 1-4)
-      - risk ( "type": "string", "description": "Uncertainty in epic" "only accepts" : ["1 - High", "2 - Medium", "3 - Low"])
+      - risk ( "type": "string", "description": "Uncertainty in epic" Accepts only : "1 - High", "2 - Medium", "3 - Low")
 
     Return ONLY valid JSON.
 
@@ -465,4 +539,3 @@ function buildPrompt(
 }
 
 export default router;
-
