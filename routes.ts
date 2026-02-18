@@ -376,13 +376,13 @@ function buildPrompt(
 
     case "sprintplan":
           return `
-    You are an Agile Sprint Planning Assistant.
+    You are an Agile Sprint Planning Expert and giving assistance.
 
     Inputs:
     - Sprint = 10 working days
     - 1 day = 8 hours
     - 1 Story Point = 8 hours
-    - Capacity per employee per sprint = 10 Story Points
+    - Capacity per employee per sprint = 10 Story Points should be considered as fully utilized and should be completly occupied with work with exactly 10 story points. Plan accordingly.
 
     Employees: ${employees}
 
