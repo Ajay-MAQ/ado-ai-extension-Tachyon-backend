@@ -382,7 +382,7 @@ function buildPrompt(
     - Sprint = 10 working days
     - 1 day = 8 hours
     - 1 Story Point = 8 hours
-    - Capacity per employee per sprint = 10 Story Points should be considered as fully utilized and should be completly occupied with work with exactly 10 story points. Plan accordingly.
+    - Capacity per employee per sprint = 10 Story Points 
 
     Employees: ${employees}
 
@@ -392,11 +392,10 @@ function buildPrompt(
     Rules:
     - Plan for 3 sprints:
       Sprint N, Sprint N+1, Sprint N+2
-    - Respect priority & dependency
-    - If story doesn't fully fit:
-      SPLIT story points across sprints
+    - If story doesn't fully fit: SPLIT story points across sprints
     - Carry forward remaining points
     - Plan based on number of employees
+    - each employee should complete 10 SP per sprint
     - Assume employees work in parallel
     - Track completedPoints per employee
     - Stories may be partially completed
