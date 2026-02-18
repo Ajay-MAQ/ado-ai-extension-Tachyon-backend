@@ -281,7 +281,7 @@ router.post("/create-stories", authMiddleware, async (req, res) => {
         { op: "add", path: "/fields/System.Description", value: story.description },
         { op: "add", path: "/fields/Microsoft.VSTS.Scheduling.StoryPoints", value: story.storyPoints },
         { op: "add", path: "/fields/Microsoft.VSTS.Common.Priority", value: story.priority },
-        // { op: "add", path: "/fields/Microsoft.VSTS.Common.Risk", value: story.risk },
+        { op: "add", path: "/fields/Microsoft.VSTS.Common.Risk", value: story.risk },
         {
           op: "add",
           path: "/relations/-",
@@ -353,8 +353,8 @@ function buildPrompt(
     - Assign:
       - storyPoints (number, max 10)
       - rank (execution order)
-      - priority = Based on rank + dependency + business value
-      - risk (numeric: 1=Low, 2=Medium, 3=High)
+      - priority = Based on rank + dependency + business value ("type": "integer", "description": "Business importance. 1=must fix; 4=unimportant." and range 1-4)
+      - risk ( "type": "string", "description": "Uncertainty in epic" examples: "low", "medium", "high")
 
     Return ONLY valid JSON.
 
