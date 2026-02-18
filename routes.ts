@@ -93,6 +93,8 @@ router.get("/feature-stories/:org/:project/:featureId", authMiddleware, async (r
       risk: wi.fields["Microsoft.VSTS.Common.Risk"] || "Medium"
     }));
 
+    console.log(`Fetched ${stories.length} stories for feature ${featureId}`);
+
     res.json({ stories });
 
   } catch (err) {
