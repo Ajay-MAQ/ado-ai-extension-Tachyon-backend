@@ -378,11 +378,6 @@ function buildPrompt(
           return `
     You are an Agile Sprint Planning Expert and giving assistance.
 
-    Inputs:
-    - Sprint = 10 working days
-    - 1 day = 8 hours
-    - 1 Story Point = 8 hours
-    - Capacity per employee per sprint = 10 Story Points 
 
     Employees: ${employees}
 
@@ -392,18 +387,31 @@ function buildPrompt(
     Rules:
     - Plan for 3 sprints:
       Sprint N, Sprint N+1, Sprint N+2
-    - If story doesn't fully fit: SPLIT story points across sprints
-    - Carry forward remaining points
-    - Plan based on number of employees
-    - each employee should complete 10 SP per sprint
-    - Assume employees work in parallel
-    - Track completedPoints per employee
-    - Stories may be partially completed
-    - No sprint underutilization
-    - Carry forward only remaining SP
-    - Include employee assignments
-    Employee Workflow:
-    - Employee finishes story → picks next highest priority
+
+    Constraints (MANDATORY):
+
+    1. 1 Story Point = 8 hours
+    2. 1 Employee Capacity per Sprint = 10 Story Points
+    3. Sprint Duration = 10 working days
+    4. Each employee MUST be allocated EXACTLY 10 Story Points per sprint
+    5. DO NOT leave unused capacity
+    6. If capacity remains, SPLIT the next user story
+    7. Carry forward ONLY remaining Story Points
+    8. Employees work in PARALLEL
+    9. A story may be:
+      - Fully completed
+      - Partially completed
+    10. Completed Story Points MUST sum to sprint capacity
+    11. NEVER mark sprint as underutilized
+    12. Continue assigning work until capacity = 0
+
+    Allocation Rules:
+
+    • Highest priority stories first
+    • Respect dependencies
+    • When a story completes → employee moves to next story
+    • When remaining capacity < story SP → partial completion
+    • Track completedPoints per employee
 
 
 
