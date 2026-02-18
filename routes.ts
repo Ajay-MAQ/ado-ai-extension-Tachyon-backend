@@ -397,14 +397,27 @@ function buildPrompt(
       SPLIT story points across sprints
     - Carry forward remaining points
     - Keep realistic workload
+    - No sprint should be underutilized
+    - Stories may be partially completed
+    - Include completedPoints
+    - Remaining SP must appear in next sprint
+
 
     Return ONLY valid JSON:
 
     {
       "sprintPlan": {
-        "Sprint N": [],
-        "Sprint N+1": [],
-        "Sprint N+2": []
+        "Sprint N": [
+        {
+          "title": "User story title",
+          "storyPoints": 7,
+          "completedPoints": 5,
+          "priority": 1,
+          "notes": "Partially Planned/ Fully Planned"
+        }
+        ],
+        "Sprint N+1": [ same structure as above ],
+        "Sprint N+2": [ same structure as above ]
       },
       "summary": {
         "capacityPerSprint": number,
