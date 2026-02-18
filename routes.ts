@@ -354,7 +354,7 @@ function buildPrompt(
       - storyPoints (number, max 10)
       - rank (execution order)
       - priority = Based on rank + dependency + business value ("type": "integer", "description": "Business importance. 1=must fix; 4=unimportant." and range 1-4)
-      - risk ( "type": "string", "description": "Uncertainty in epic" Accepts only : "1 - High", "2 - Medium", "3 - Low")
+      - risk ( "type": "string", "description": "Uncertainty in epic" "only accepts" : ["1 - High", "2 - Medium", "3 - Low"])
 
     Return ONLY valid JSON.
 
@@ -465,3 +465,4 @@ function buildPrompt(
 }
 
 export default router;
+
