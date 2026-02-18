@@ -125,6 +125,8 @@ router.post("/analyze", authMiddleware, async (req, res) => {
 
     const output = await generate(prompt);
 
+    console.log("Generated output:", output);
+
     res.json({ output });
 
   } catch (err) {
