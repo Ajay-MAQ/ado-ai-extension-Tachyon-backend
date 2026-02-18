@@ -396,11 +396,16 @@ function buildPrompt(
     - If story doesn't fully fit:
       SPLIT story points across sprints
     - Carry forward remaining points
-    - Keep realistic workload
-    - No sprint should be underutilized
+    - Plan based on number of employees
+    - Assume employees work in parallel
+    - Track completedPoints per employee
     - Stories may be partially completed
-    - Include completedPoints
-    - Remaining SP must appear in next sprint
+    - No sprint underutilization
+    - Carry forward only remaining SP
+    - Include employee assignments
+    Employee Workflow:
+    - Employee finishes story → picks next highest priority
+
 
 
     Return ONLY valid JSON:
@@ -408,20 +413,31 @@ function buildPrompt(
     {
       "sprintPlan": {
         "Sprint N": [
-        {
-          "title": "User story title",
-          "storyPoints": 7,
-          "completedPoints": 5,
-          "priority": 1,
-          "notes": "Partially Planned/ Fully Planned"
-        }
+      {
+        "title": "Collect and Validate Shipping Information",
+        "storyPoints": 5,
+        "assignments": [
+          {
+            "employee": "E1",
+            "completedPoints": 2
+          },
+          {
+            "employee": "E2",
+            "completedPoints": 3
+          }
+        ],
+        "priority": 1,
+        "notes": "Fully completed"
+      }
         ],
         "Sprint N+1": [ same structure as above ],
         "Sprint N+2": [ same structure as above ]
       },
       "summary": {
-        "capacityPerSprint": number,
-        "totalStoryPoints": number
+          "employees": 2,
+          "capacityPerEmployee": 10,
+          "capacityPerSprint": 20,
+          "totalStoryPoints": 42
       }
     }
     `;
