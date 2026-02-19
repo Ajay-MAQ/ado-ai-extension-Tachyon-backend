@@ -376,70 +376,82 @@ function buildPrompt(
 
     case "sprintplan":
           return `
-      You are an Agile Sprint Planning Expert.
+You are an Agile Sprint Planning Engine.
 
-      Employees: ${employees ?? 0}
-      Capacity Per Employee: 10 Story Points
-      Capacity Per Sprint: ${(employees ?? 0) * 10} Story Points
+This is a STRICT capacity allocation problem.
 
-      User Stories:
-      ${JSON.stringify(stories, null, 2)}
+INPUT:
 
-      Plan sprint allocation for:
-      Sprint N, Sprint N+1, Sprint N+2
+Employees: ${employees}
+Capacity Per Employee: 10 Story Points
+Capacity Per Sprint: ${employees ?? 0 * 10} Story Points
 
-      Constraints (MANDATORY):
+User Stories:
+${JSON.stringify(stories, null, 2)}
 
-      1. 1 Story Point = 8 hours
-      2. Sprint Duration = 10 working days
-      3. Each employee MUST complete EXACTLY 10 Story Points per sprint
-      4. DO NOT leave unused capacity
-      5. DO NOT exceed employee capacity
-      6. If capacity remains → SPLIT stories
-      7. Carry forward ONLY remaining Story Points
-      8. Employees work in PARALLEL
-      9. Stories prioritized by Priority (P1 highest)
-      10. Respect dependencies
-      11. Completed Story Points per sprint MUST equal capacityPerSprint
-      12. RemainingCapacity MUST be 0
-      13. NEVER output Underutilized / Overloaded
+OBJECTIVE:
+Distribute work across exactly 3 sprints:
+Sprint N, Sprint N+1, Sprint N+2
 
-      VALIDATION RULES (MANDATORY):
+MANDATORY RULES (NO EXCEPTIONS):
 
-      • Each employee completedPoints = 10
-      • Sum(completedPoints) = capacityPerSprint
-      • RemainingCapacity = 0
+1. Each Sprint Capacity = employees × 10
+2. Each Employee MUST complete EXACTLY 10 Story Points per sprint
+3. An Employee can NEVER exceed 10 SP
+4. An Employee can NEVER be assigned less than 10 SP
+5. Sprint Remaining Capacity MUST be 0
+6. DO NOT output Underutilized or Overloaded
+7. If capacity remains → SPLIT next story
+8. Carry forward ONLY remaining Story Points
+9. Stories prioritized by Priority (1 highest)
+10. Respect dependencies
+11. Employees work in PARALLEL
+12. CompletedPoints per Employee = 10 EXACTLY
 
-      IMPORTANT:
-      You MUST return ONLY valid JSON.
-      Do NOT include explanations, headings, emojis, markdown, or tables.
-      Response must start with { and end with }.
+VALIDATION BEFORE RESPONSE (REQUIRED):
 
-      JSON Structure:
+✔ Verify each employee completedPoints = 10
+✔ Verify sum(completedPoints) = capacityPerSprint
+✔ Verify remainingCapacity = 0
+✔ If invalid → RECOMPUTE internally
 
+FORBIDDEN:
+
+❌ Do NOT invent fake stories
+❌ Do NOT add "Carry Forward" rows
+❌ Do NOT leave unused capacity
+❌ Do NOT exceed capacity
+❌ Do NOT output text/tables/markdown
+
+OUTPUT FORMAT (STRICT):
+
+Return ONLY valid JSON.
+Response MUST start with { and end with }.
+
+{
+  "sprintPlan": {
+    "Sprint N": [
       {
-        "sprintPlan": {
-          "Sprint N": [
-            {
-              "title": "Story Title",
-              "storyPoints": 5,
-              "assignments": [
-                { "employee": "E1", "completedPoints": 5 }
-              ],
-              "priority": 1,
-              "notes": "Fully completed"
-            }
-          ],
-          "Sprint N+1": [],
-          "Sprint N+2": []
-        },
-        "summary": {
-          "employees": ${employees ?? 0},
-          "capacityPerEmployee": 10,
-          "capacityPerSprint": ${(employees ?? 0) * 10},
-          "totalStoryPoints": <sum>
-        }
+        "title": "Story title",
+        "storyPoints": 5,
+        "assignments": [
+          { "employee": "E1", "completedPoints": 5 }
+        ],
+        "priority": 1,
+        "notes": "Fully completed"
       }
+    ],
+    "Sprint N+1": [],
+    "Sprint N+2": []
+  },
+  "summary": {
+    "employees": ${employees},
+    "capacityPerEmployee": 10,
+    "capacityPerSprint": ${employees ?? 0 * 10},
+    "totalStoryPoints": <calculated>
+  }
+}
+
 
     `;
 
@@ -573,3 +585,4 @@ function buildPrompt(
 }
 
 export default router;
+
