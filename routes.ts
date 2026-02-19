@@ -395,18 +395,21 @@ Sprint N, Sprint N+1, Sprint N+2
 
 MANDATORY RULES (NO EXCEPTIONS):
 
-1. Each Sprint Capacity = employees × 10
+1. Each Sprint Capacity = employees * 10
 2. Each Employee MUST complete EXACTLY 10 Story Points per sprint
 3. An Employee can NEVER exceed 10 SP
 4. An Employee can NEVER be assigned less than 10 SP
 5. Sprint Remaining Capacity MUST be 0
 6. DO NOT output Underutilized or Overloaded
-7. If capacity remains → SPLIT next story
-8. Carry forward ONLY remaining Story Points
-9. Stories prioritized by Priority (1 highest)
-10. Respect dependencies
-11. Employees work in PARALLEL
-12. CompletedPoints per Employee = 10 EXACTLY
+7. If in any sprint we have remainig capacity then follow the below instructions:
+  - take the next story and assign the remaining capacity to the next user story until we fill the capacity of the current sprint
+  - After spliting the user story remaining user story points will be asigned to the next sprint4
+  - Carry forward ONLY remaining Story Points to the next sprint, do NOT carry forward the entire user story
+  - Repeat this process until we fill the capacity of all 3 sprints
+8. Stories prioritized by Priority (1 highest)
+9. Respect dependencies
+10. Employees work in PARALLEL
+11. CompletedPoints per Employee = 10 EXACTLY
 
 VALIDATION BEFORE RESPONSE (REQUIRED):
 
