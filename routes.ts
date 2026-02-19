@@ -376,77 +376,71 @@ function buildPrompt(
 
     case "sprintplan":
           return `
-    You are an Agile Sprint Planning Expert and giving assistance.
+      You are an Agile Sprint Planning Expert.
 
+      Employees: ${employees ?? 0}
+      Capacity Per Employee: 10 Story Points
+      Capacity Per Sprint: ${(employees ?? 0) * 10} Story Points
 
-    Employees: ${employees}
+      User Stories:
+      ${JSON.stringify(stories, null, 2)}
 
-    User Stories:
-    ${JSON.stringify(stories, null, 2)}
-
-    Rules:
-    - Plan for 3 sprints:
+      Plan sprint allocation for:
       Sprint N, Sprint N+1, Sprint N+2
 
-    Constraints (MANDATORY):
+      Constraints (MANDATORY):
 
-    1. 1 Story Point = 8 hours
-    2. 1 Employee Capacity per Sprint = 10 Story Points
-    3. Sprint Duration = 10 working days
-    4. Each employee MUST be allocated EXACTLY 10 Story Points per sprint
-    5. DO NOT leave unused capacity
-    6. If capacity remains, SPLIT the next user story
-    7. Carry forward ONLY remaining Story Points
-    8. Employees work in PARALLEL
-    9. A story may be:
-      - Fully completed
-      - Partially completed
-    10. Completed Story Points MUST sum to sprint capacity
-    11. NEVER mark sprint as underutilized
-    12. Continue assigning work until capacity = 0
+      1. 1 Story Point = 8 hours
+      2. Sprint Duration = 10 working days
+      3. Each employee MUST complete EXACTLY 10 Story Points per sprint
+      4. DO NOT leave unused capacity
+      5. DO NOT exceed employee capacity
+      6. If capacity remains → SPLIT stories
+      7. Carry forward ONLY remaining Story Points
+      8. Employees work in PARALLEL
+      9. Stories prioritized by Priority (P1 highest)
+      10. Respect dependencies
+      11. Completed Story Points per sprint MUST equal capacityPerSprint
+      12. RemainingCapacity MUST be 0
+      13. NEVER output Underutilized / Overloaded
 
-    Allocation Rules:
+      VALIDATION RULES (MANDATORY):
 
-    • Highest priority stories first
-    • Respect dependencies
-    • When a story completes → employee moves to next story
-    • When remaining capacity < story SP → partial completion
-    • Track completedPoints per employee
+      • Each employee completedPoints = 10
+      • Sum(completedPoints) = capacityPerSprint
+      • RemainingCapacity = 0
 
+      IMPORTANT:
+      You MUST return ONLY valid JSON.
+      Do NOT include explanations, headings, emojis, markdown, or tables.
+      Response must start with { and end with }.
 
+      JSON Structure:
 
-    Return ONLY valid JSON:
-
-    {
-      "sprintPlan": {
-        "Sprint N": [
       {
-        "title": "Collect and Validate Shipping Information",
-        "storyPoints": 5,
-        "assignments": [
-          {
-            "employee": "E1",
-            "completedPoints": 2
-          },
-          {
-            "employee": "E2",
-            "completedPoints": 3
-          }
-        ],
-        "priority": 1,
-        "notes": "Fully completed"
-      }
-        ],
-        "Sprint N+1": [ same structure as above ],
-        "Sprint N+2": [ same structure as above ]
-      },
-      "summary": {
-          "employees": 2,
+        "sprintPlan": {
+          "Sprint N": [
+            {
+              "title": "Story Title",
+              "storyPoints": 5,
+              "assignments": [
+                { "employee": "E1", "completedPoints": 5 }
+              ],
+              "priority": 1,
+              "notes": "Fully completed"
+            }
+          ],
+          "Sprint N+1": [],
+          "Sprint N+2": []
+        },
+        "summary": {
+          "employees": ${employees ?? 0},
           "capacityPerEmployee": 10,
-          "capacityPerSprint": 20,
-          "totalStoryPoints": 42
+          "capacityPerSprint": ${(employees ?? 0) * 10},
+          "totalStoryPoints": <sum>
+        }
       }
-    }
+
     `;
 
 
@@ -565,7 +559,7 @@ function buildPrompt(
       return `Write a clear, professional Azure DevOps description only for the following ${type}: ${title}. Directly give descriptiion no need of heading`;
 
     case "criteria":
-      return `Generate professional acceptance criteria only for the following User Story: ${title}. Directly give Acceptance criteria without heading in point vice fashion such that when I insert into azure ado acceptance criteria it should visible in the point vice fashion`;
+      return `Generate professional acceptance criteria only for the following User Story: ${title}. Directly give Acceptance criteria without heading in point vice fashion with <br> tags at the end of each point`;
 
     case "tests":
       return `You are a Senior QA Engineer. Create test cases for: ${title}`;
