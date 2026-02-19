@@ -115,13 +115,13 @@ router.get("/feature-stories/:org/:project/:featureId", authMiddleware, async (r
 
 router.post("/analyze", authMiddleware, async (req, res) => {
   try {
-    const {title, description, type, action, employees, stories} = req.body;
+    const {title, description, type, action, sprintPoints, stories} = req.body;
 
     if (!title || !action) {
       return res.status(400).json({ error: "Missing title or action" });
     }
 
-    const prompt = buildPrompt(title, description, type, action, employees, stories);
+    const prompt = buildPrompt(title, description, type, action, sprintPoints, stories);
 
     const output = await generate(prompt);
 
@@ -368,7 +368,7 @@ function buildPrompt(
   desc: string,
   type: string,
   action: string,
-  employees?: number,
+  sprintPoints?: { n: number; n1: number; n2: number },
   stories?: any[]
 ) {
   switch (action) {
@@ -376,228 +376,64 @@ function buildPrompt(
 
     case "sprintplan":
           return `
-You are an Agile Sprint Planning Engine.
+      You are an Agile Sprint Planning Assistant.
 
-This is a STRICT capacity allocation problem.
+      TASK:
+      Allocate the provided user stories across three sprints.
 
-INPUT:
+      INPUT:
+      Feature Title: ${title}
 
-Employees: ${employees}
-Capacity Per Employee: 10 Story Points
-Capacity Per Sprint: ${employees ?? 0 * 10} Story Points
+      Sprint Capacities:
+      - Sprint N: ${sprintPoints?.n}
+      - Sprint N+1: ${sprintPoints?.n1}
+      - Sprint N+2: ${sprintPoints?.n2}
 
-User Stories:
-${JSON.stringify(stories, null, 2)}
+      User Stories (in given order):
+      ${JSON.stringify(stories, null, 2)}
 
-OBJECTIVE:
-Distribute work across exactly 3 sprints:
-Sprint N, Sprint N+1, Sprint N+2
+      PLANNING RULES (STRICT):
+      1. Follow EXACT story order (do NOT reorder)
+      2. Sprint capacity MUST be completely filled
+      3. Stories MAY be split across sprints
+      4. When splitting:
+        - Allocate only remaining sprint capacity
+        - Carry leftover points forward
+      5. Do NOT modify story points
+      6. Do NOT invent stories
+      7. Stop if backlog exhausted
 
-MANDATORY RULES (NO EXCEPTIONS):
+      OUTPUT FORMAT (STRICT JSON ONLY):
 
-1. Each Sprint Capacity = employees * 10
-2. Each Employee MUST complete EXACTLY 10 Story Points per sprint
-3. An Employee can NEVER exceed 10 SP
-4. An Employee can NEVER be assigned less than 10 SP
-5. Sprint Remaining Capacity MUST be 0
-6. DO NOT output Underutilized or Overloaded
-7. If in any sprint we have remainig capacity then follow the below instructions:
-  - take the next story and assign the remaining capacity to the next user story until we fill the capacity of the current sprint
-  - After spliting the user story remaining user story points will be asigned to the next sprint4
-  - Carry forward ONLY remaining Story Points to the next sprint, do NOT carry forward the entire user story
-  - Repeat this process until we fill the capacity of all 3 sprints
-8. Stories prioritized by Priority (1 highest)
-9. Respect dependencies
-10. Employees work in PARALLEL
-11. CompletedPoints per Employee = 10 EXACTLY
-
-VALIDATION BEFORE RESPONSE (REQUIRED):
-
-✔ Verify each employee completedPoints = 10
-✔ Verify sum(completedPoints) = capacityPerSprint
-✔ Verify remainingCapacity = 0
-✔ If invalid → RECOMPUTE internally
-
-OUTPUT FORMAT (STRICT):
-
-Return ONLY valid JSON.
-Response MUST start with { and end with }.
-
-Example:
-{
-  "sprintPlan": {
-    "Sprint N": [
       {
-        "title": "Implement Payment Gateway Integration",
-        "storyPoints": 12,
-        "priority": 1,
-        "assignments": [
-          { "employee": "E1", "completedPoints": 10 },
-          { "employee": "E2", "completedPoints": 2 }
+        "sprints": [
+          {
+            "name": "Sprint N",
+            "capacity": number,
+            "allocatedPoints": number,
+            "stories": [
+              {
+                "id": "string",
+                "title": "string",
+                "allocatedPoints": number,
+                "remainingPoints": number
+              }
+            ]
+          }
         ],
-        "notes": "Partially completed (10/12 SP split across employees)"
-      },
-      {
-        "title": "Build Shopping Cart Review Page",
-        "storyPoints": 6,
-        "priority": 1,
-        "assignments": [
-          { "employee": "E2", "completedPoints": 6 }
-        ],
-        "notes": "Fully completed"
-      },
-      {
-        "title": "Develop Secure Payment Entry",
-        "storyPoints": 5,
-        "priority": 1,
-        "assignments": [
-          { "employee": "E3", "completedPoints": 5 }
-        ],
-        "notes": "Fully completed"
-      },
-      {
-        "title": "Generate Order Summary",
-        "storyPoints": 3,
-        "priority": 2,
-        "assignments": [
-          { "employee": "E3", "completedPoints": 3 }
-        ],
-        "notes": "Fully completed"
-      },
-      {
-        "title": "UI Validation Improvements",
-        "storyPoints": 4,
-        "priority": 2,
-        "assignments": [
-          { "employee": "E3", "completedPoints": 2 }
-        ],
-        "notes": "Partially completed (2/4 SP)"
+        "unallocatedStories": [
+          {
+            "id": "string",
+            "title": "string",
+            "remainingPoints": number
+          }
+        ]
       }
-    ],
 
-    "Sprint N+1": [
-      {
-        "title": "UI Validation Improvements",
-        "storyPoints": 2,
-        "priority": 2,
-        "assignments": [
-          { "employee": "E1", "completedPoints": 2 }
-        ],
-        "notes": "Completed remaining work"
-      },
-      {
-        "title": "Responsive Checkout Layout",
-        "storyPoints": 8,
-        "priority": 2,
-        "assignments": [
-          { "employee": "E1", "completedPoints": 8 }
-        ],
-        "notes": "Fully completed"
-      },
-      {
-        "title": "Error Handling & Messaging",
-        "storyPoints": 6,
-        "priority": 1,
-        "assignments": [
-          { "employee": "E2", "completedPoints": 6 }
-        ],
-        "notes": "Fully completed"
-      },
-      {
-        "title": "Performance Optimization",
-        "storyPoints": 4,
-        "priority": 2,
-        "assignments": [
-          { "employee": "E2", "completedPoints": 4 }
-        ],
-        "notes": "Fully completed"
-      },
-      {
-        "title": "Analytics Tracking Integration",
-        "storyPoints": 5,
-        "priority": 2,
-        "assignments": [
-          { "employee": "E3", "completedPoints": 5 }
-        ],
-        "notes": "Fully completed"
-      },
-      {
-        "title": "Security Hardening",
-        "storyPoints": 7,
-        "priority": 1,
-        "assignments": [
-          { "employee": "E3", "completedPoints": 5 }
-        ],
-        "notes": "Partially completed (5/7 SP)"
-      }
-    ],
-
-    "Sprint N+2": [
-      {
-        "title": "Security Hardening",
-        "storyPoints": 2,
-        "priority": 1,
-        "assignments": [
-          { "employee": "E1", "completedPoints": 2 }
-        ],
-        "notes": "Completed remaining work"
-      },
-      {
-        "title": "Test Automation Improvements",
-        "storyPoints": 8,
-        "priority": 2,
-        "assignments": [
-          { "employee": "E1", "completedPoints": 8 }
-        ],
-        "notes": "Fully completed"
-      },
-      {
-        "title": "Regression Suite Stabilization",
-        "storyPoints": 6,
-        "priority": 2,
-        "assignments": [
-          { "employee": "E2", "completedPoints": 6 }
-        ],
-        "notes": "Fully completed"
-      },
-      {
-        "title": "API Retry Logic Enhancements",
-        "storyPoints": 4,
-        "priority": 2,
-        "assignments": [
-          { "employee": "E2", "completedPoints": 4 }
-        ],
-        "notes": "Fully completed"
-      },
-      {
-        "title": "UX Enhancements",
-        "storyPoints": 10,
-        "priority": 3,
-        "assignments": [
-          { "employee": "E3", "completedPoints": 10 }
-        ],
-        "notes": "Fully completed"
-      }
-    ]
-  },
-
-  "summary": {
-    "employees": 3,
-    "capacityPerEmployee": 10,
-    "capacityPerSprint": 30,
-    "totalStoryPoints": 57,
-    "utilization": "100% per sprint"
-  }
-}
-,
-  "summary": {
-    "employees": ${employees},
-    "capacityPerEmployee": 10,
-    "capacityPerSprint": ${employees ?? 0 * 10},
-    "totalStoryPoints": <calculated>
-  }
-}
-
+      VALIDATION:
+      - allocatedPoints MUST equal sprint capacity
+      - No negative numbers
+      - JSON must be valid
 
     `;
 
