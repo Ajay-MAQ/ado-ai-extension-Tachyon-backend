@@ -545,11 +545,10 @@ VALIDATION:
       return `Given User story type = ${type}: user story = ${title}. 
       
 # SER STORY FORMAT (MANDATORY) 
-User Story must strictly follow this format:
-
-    As a <user persona>, <br>
-    I want <goal / capability>,<br>
-    So that <business value / benefit>.<br>
+User Story description must strictly follow this format:
+    As a <b><user persona></b>, <br>
+    I want <b><goal / capability></b>,<br>
+    So that <b><business value / benefit></b>.<br>
 
 
 ### Follow the given example format strictly:
@@ -557,8 +556,8 @@ User Story must strictly follow this format:
 Example Input:
   Title: "Finalize Output Schema and Spec Kit Execution Framework for FAB Extraction Agents"
   User story Type: Story
-Example Output:
 
+Example Output:
   As a <b>Developer</b>,<br>
   <b>I want</b> to finalize the output JSON schema for Loan and Real Estate agents after FAB-driven extraction,<br>
   <b>So that</b> the Spec Kit prompt lifecycle executes as a single cohesive flow and the system produces consistent, deterministic outputs with reliable document handling.<br>
