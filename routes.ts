@@ -587,8 +587,7 @@ Example Output:
     Title: "Finalize Output Schema and Spec Kit Execution Framework for FAB Extraction Agents"
   Example Output:
 
-  Scenario 1:<br>
-      Output JSON schema is finalized and enforced<br>
+  Scenario 1: Output JSON schema is finalized and enforced<br>
       Given the FAB agent completes execution and extraction is successful<br>
       When the agent produces its final response<br>
       Then the response strictly conforms to the approved output JSON schema<br>
@@ -596,8 +595,7 @@ Example Output:
       And no undocumented or extra fields are present<br>
       <br>
 \n
-    Scenario 2:<br>
-      Spec Kit prompt framework executes as a unified lifecycle<br>
+    Scenario 2: Spec Kit prompt framework executes as a unified lifecycle<br>
       Given a valid input document or payload<br>
       When the Spec Kit lifecycle runs using the Constitution, Specify, Plan, Task, and Implement prompts<br>
       Then each prompt executes in the defined order<br>
