@@ -106,9 +106,6 @@ router.get("/feature-stories/:org/:project/:featureId", authMiddleware, async (r
 
 
 
-
-
-
 /* ===============================
    ANALYZE (LLM GENERATION)
 ================================ */
@@ -393,15 +390,13 @@ function buildPrompt(
       ${JSON.stringify(stories, null, 2)}
 
       PLANNING RULES (STRICT):
-      1. Follow EXACT story order (do NOT reorder)
-      2. Sprint capacity MUST be completely filled
-      3. Stories MAY be split across sprints
-      4. When splitting:
-        - Allocate only remaining sprint capacity
-        - Carry leftover points forward
-      5. Do NOT modify story points
-      6. Do NOT invent stories
-      7. Stop if backlog exhausted
+        1. Follow EXACT story order (do NOT reorder)
+        2. Do NOT split user stories across sprints
+        3. Allocate whole stories only
+        4. A sprint may have unused capacity
+        5. Do NOT modify story points
+        6. Do NOT invent stories
+        7. Stop if backlog exhausted
 
       OUTPUT FORMAT (STRICT JSON ONLY):
 
