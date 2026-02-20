@@ -551,7 +551,7 @@ User Story description must strictly follow this format:
     So that <b><business value / benefit></b>.<br>
 
 
-### Follow the given example format strictly:
+### Follow the given example format strictly with tags:
 
 Example Input:
   Title: "Finalize Output Schema and Spec Kit Execution Framework for FAB Extraction Agents"
