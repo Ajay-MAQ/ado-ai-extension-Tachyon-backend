@@ -542,10 +542,74 @@ VALIDATION:
 
 
     case "description":
-      return `Write a clear, professional Azure DevOps description only in the Gherkin format for the following ${type}: ${title}. Directly give descriptiion no need of heading. At the end of points include html break tag `;
+      return `Given User story type = ${type}: user story = ${title}. 
+      
+# SER STORY FORMAT (MANDATORY) 
+User Story must strictly follow this format:
+
+Description: 
+\n
+    As a **<user persona>**, <br>
+    **I want** <goal / capability>,<br>
+    **So that** <business value / benefit>.<br>
+\n
+
+### Follow the given example format strictly:
+
+Example Input:
+  Title: "Finalize Output Schema and Spec Kit Execution Framework for FAB Extraction Agents"
+  User story Type: Story
+Example Output:
+  Description:
+  \n
+  As a <strong>Developer</strong>,<br>
+  <strong>I want</strong> to finalize the output JSON schema for Loan and Real Estate agents after FAB-driven extraction,<br>
+  <strong>So that</strong> the Spec Kit prompt lifecycle executes as a single cohesive flow and the system produces consistent, deterministic outputs with reliable document handling.<br>
+\n
+      
+      `;
 
     case "criteria":
-      return `Generate professional acceptance criteria only in the Gherkin format for the following User Story: ${title}. Directly give Acceptance criteria without heading in point vice fashion with <br> tags at the end of each point`;
+      return `Given User Story: ${title}. add <br> tags at the end of each point
+
+      You MUST strictly follow the structure and rules below.
+      Acceptance Criteria: 
+\n
+    Guidelines for Acceptance Criteria:
+    1. Ensure that each criterion is testable and measurable.
+    2. Write criteria in the context of the user persona described in the problem.
+    3. You MUST use EITHER:
+        - Gherkin syntax (Given, When, Then) format for behavioral scenarios, OR
+        - Clear, concise bullet points for testable outcomes.
+    4. DO NOT use both Gherkin and bullet points together.
+    5. Avoid generic statements such as:
+        - Ensure TAD and TS are adhered
+        - Delivered solution does not generate additional issues on servers and browser
+    6. Additional Gherkin scenarios for other user personas can be listed separately if necessary.
+
+  Example Input:
+    Title: "Finalize Output Schema and Spec Kit Execution Framework for FAB Extraction Agents"
+  Example Output:
+  Acceptance Criteria:  
+  \n
+  Scenario 1: Output JSON schema is finalized and enforced
+      Given the FAB agent completes execution and extraction is successful
+      When the agent produces its final response
+      Then the response strictly conforms to the approved output JSON schema
+      And the schema remains consistent across both Loan and Real Estate agent types
+      And no undocumented or extra fields are present
+
+    Scenario 2: Spec Kit prompt framework executes as a unified lifecycle
+      Given a valid input document or payload
+      When the Spec Kit lifecycle runs using the Constitution, Specify, Plan, Task, and Implement prompts
+      Then each prompt executes in the defined order
+      And responsibilities remain clearly separated across prompts
+      And code generation completes successfully
+"""
+
+
+      
+      `;
 
     case "tests":
       return `You are a Senior QA Engineer. Create test cases for: ${title}`;
