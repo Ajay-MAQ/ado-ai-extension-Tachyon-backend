@@ -390,13 +390,9 @@ User Stories (in given order):
 ${JSON.stringify(stories, null, 2)}
 
 PLANNING RULES (STRICT):
-1. Follow EXACT story order (do NOT reorder)
-2. Do NOT split user stories across sprints
-3. Allocate whole stories only and the utilize sprint capacity as much as possible. I.e. if next story fits in current sprint, allocate it there. Otherwise move to next sprint.
-4. A sprint may have unused capacity
-5. Do NOT modify story points
-6. Do NOT invent stories
-7. Stop if backlog exhausted
+1. Keep on filling user stories in the current sprint until adding another story would exceed the sprint's capacity.
+2. Once a sprint is full, move to the next sprint and repeat the process.
+
 
 OUTPUT FORMAT (STRICT JSON ONLY):
 
@@ -546,7 +542,7 @@ VALIDATION:
 
 
     case "description":
-      return `Write a clear, professional Azure DevOps description only in the Gherkin format for the following ${type}: ${title}. Directly give descriptiion no need of heading`;
+      return `Write a clear, professional Azure DevOps description only in the Gherkin format for the following ${type}: ${title}. Directly give descriptiion no need of heading. At the end of points include html break tag `;
 
     case "criteria":
       return `Generate professional acceptance criteria only in the Gherkin format for the following User Story: ${title}. Directly give Acceptance criteria without heading in point vice fashion with <br> tags at the end of each point`;
