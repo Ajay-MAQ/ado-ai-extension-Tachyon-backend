@@ -373,62 +373,64 @@ function buildPrompt(
 
     case "sprintplan":
           return `
-      You are an Agile Sprint Planning Assistant.
+You are an Agile Sprint Planning Assistant.
 
-      TASK:
-      Allocate the provided user stories across three sprints.
+TASK:
+Allocate the provided user stories across three sprints.
 
-      INPUT:
-      Feature Title: ${title}
+INPUT:
+Feature Title: ${title}
 
-      Sprint Capacities:
-      - Sprint N: ${sprintPoints?.n}
-      - Sprint N+1: ${sprintPoints?.n1}
-      - Sprint N+2: ${sprintPoints?.n2}
+Sprint Capacities:
+- Sprint N: ${sprintPoints?.n}
+- Sprint N+1: ${sprintPoints?.n1}
+- Sprint N+2: ${sprintPoints?.n2}
 
-      User Stories (in given order):
-      ${JSON.stringify(stories, null, 2)}
+User Stories (in given order):
+${JSON.stringify(stories, null, 2)}
 
-      PLANNING RULES (STRICT):
-        1. Follow EXACT story order (do NOT reorder)
-        2. Do NOT split user stories across sprints
-        3. Allocate whole stories only
-        4. A sprint may have unused capacity
-        5. Do NOT modify story points
-        6. Do NOT invent stories
-        7. Stop if backlog exhausted
+PLANNING RULES (STRICT):
+1. Follow EXACT story order (do NOT reorder)
+2. Do NOT split user stories across sprints
+3. Allocate whole stories only
+4. A sprint may have unused capacity
+5. Do NOT modify story points
+6. Do NOT invent stories
+7. Stop if backlog exhausted
 
-      OUTPUT FORMAT (STRICT JSON ONLY):
+OUTPUT FORMAT (STRICT JSON ONLY):
 
-      {
-        "sprints": [
-          {
-            "name": "Sprint N",
-            "capacity": number,
-            "allocatedPoints": number,
-            "stories": [
-              {
-                "id": "string",
-                "title": "string",
-                "allocatedPoints": number,
-                "remainingPoints": number
-              }
-            ]
-          }
-        ],
-        "unallocatedStories": [
-          {
-            "id": "string",
-            "title": "string",
-            "remainingPoints": number
-          }
-        ]
-      }
+{
+  "sprints": [
+    {
+      "name": "Sprint N",
+      "capacity": number,
+      "usedPoints": number,
+      "unusedCapacity": number,
+      "stories": [
+        {
+          "id": "string",
+          "title": "string",
+          "storyPoints": number
+        }
+      ]
+    }
+  ],
+  "unallocatedStories": [
+    {
+      "id": "string",
+      "title": "string",
+      "storyPoints": number
+    }
+  ]
+}
 
-      VALIDATION:
-      - allocatedPoints MUST equal sprint capacity
-      - No negative numbers
-      - JSON must be valid
+VALIDATION:
+- usedPoints ≤ capacity
+- unusedCapacity = capacity - usedPoints
+- No negative numbers
+- JSON must be valid
+
 
     `;
 
