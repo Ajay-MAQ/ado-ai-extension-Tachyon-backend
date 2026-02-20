@@ -392,8 +392,7 @@ ${JSON.stringify(stories, null, 2)}
 PLANNING RULES (STRICT):
 1. Follow EXACT story order (do NOT reorder)
 2. Do NOT split user stories across sprints
-3. Allocate whole stories only
-4. if next user story story points > remaining capacity of current sprint, move to next sprint and try to fit it there. Otherwise fill it in current sprint.
+3. Allocate whole stories only and the utilize sprint capacity as much as possible. I.e. if next story fits in current sprint, allocate it there. Otherwise move to next sprint.
 4. A sprint may have unused capacity
 5. Do NOT modify story points
 6. Do NOT invent stories
