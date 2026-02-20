@@ -469,7 +469,6 @@ function buildPrompt(
           "storyPoints": 3,
           "rank": 1,
           "priority": 1,
-          "risk": 2,
           "dependency": ""
         }
       ]
