@@ -547,12 +547,10 @@ VALIDATION:
 # SER STORY FORMAT (MANDATORY) 
 User Story must strictly follow this format:
 
-Description: 
-\n
     As a **<user persona>**, <br>
     **I want** <goal / capability>,<br>
     **So that** <business value / benefit>.<br>
-\n
+
 
 ### Follow the given example format strictly:
 
@@ -560,12 +558,11 @@ Example Input:
   Title: "Finalize Output Schema and Spec Kit Execution Framework for FAB Extraction Agents"
   User story Type: Story
 Example Output:
-  Description:
-  \n
+
   As a <strong>Developer</strong>,<br>
   <strong>I want</strong> to finalize the output JSON schema for Loan and Real Estate agents after FAB-driven extraction,<br>
   <strong>So that</strong> the Spec Kit prompt lifecycle executes as a single cohesive flow and the system produces consistent, deterministic outputs with reliable document handling.<br>
-\n
+
       
       `;
 
@@ -573,8 +570,7 @@ Example Output:
       return `Given User Story: ${title}. add <br> tags at the end of each point
 
       You MUST strictly follow the structure and rules below.
-      Acceptance Criteria: 
-\n
+
     Guidelines for Acceptance Criteria:
     1. Ensure that each criterion is testable and measurable.
     2. Write criteria in the context of the user persona described in the problem.
@@ -590,21 +586,20 @@ Example Output:
   Example Input:
     Title: "Finalize Output Schema and Spec Kit Execution Framework for FAB Extraction Agents"
   Example Output:
-  Acceptance Criteria:  
-  \n
-  Scenario 1: Output JSON schema is finalized and enforced
-      Given the FAB agent completes execution and extraction is successful
-      When the agent produces its final response
-      Then the response strictly conforms to the approved output JSON schema
-      And the schema remains consistent across both Loan and Real Estate agent types
-      And no undocumented or extra fields are present
 
-    Scenario 2: Spec Kit prompt framework executes as a unified lifecycle
-      Given a valid input document or payload
-      When the Spec Kit lifecycle runs using the Constitution, Specify, Plan, Task, and Implement prompts
-      Then each prompt executes in the defined order
-      And responsibilities remain clearly separated across prompts
-      And code generation completes successfully
+  Scenario 1: Output JSON schema is finalized and enforced<br>
+      Given the FAB agent completes execution and extraction is successful<br>
+      When the agent produces its final response<br>
+      Then the response strictly conforms to the approved output JSON schema<br>
+      And the schema remains consistent across both Loan and Real Estate agent types<br>
+      And no undocumented or extra fields are present<br>
+
+    Scenario 2: Spec Kit prompt framework executes as a unified lifecycle<br>
+      Given a valid input document or payload<br>
+      When the Spec Kit lifecycle runs using the Constitution, Specify, Plan, Task, and Implement prompts<br>
+      Then each prompt executes in the defined order<br>
+      And responsibilities remain clearly separated across prompts<br>
+      And code generation completes successfully<br>
 """
 
 
