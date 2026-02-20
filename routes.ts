@@ -547,9 +547,9 @@ VALIDATION:
 # SER STORY FORMAT (MANDATORY) 
 User Story must strictly follow this format:
 
-    As a **<user persona>**, <br>
-    **I want** <goal / capability>,<br>
-    **So that** <business value / benefit>.<br>
+    As a <user persona>, <br>
+    I want <goal / capability>,<br>
+    So that <business value / benefit>.<br>
 
 
 ### Follow the given example format strictly:
@@ -559,9 +559,9 @@ Example Input:
   User story Type: Story
 Example Output:
 
-  As a <strong>Developer</strong>,<br>
-  <strong>I want</strong> to finalize the output JSON schema for Loan and Real Estate agents after FAB-driven extraction,<br>
-  <strong>So that</strong> the Spec Kit prompt lifecycle executes as a single cohesive flow and the system produces consistent, deterministic outputs with reliable document handling.<br>
+  As a <b>Developer</b>,<br>
+  <b>I want</b> to finalize the output JSON schema for Loan and Real Estate agents after FAB-driven extraction,<br>
+  <b>So that</b> the Spec Kit prompt lifecycle executes as a single cohesive flow and the system produces consistent, deterministic outputs with reliable document handling.<br>
 
       
       `;
