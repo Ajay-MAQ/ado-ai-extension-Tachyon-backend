@@ -406,12 +406,16 @@ router.post("/compute-capacity", authMiddleware, async (req, res) => {
   try {
     const { org, project, team, iterationPaths } = req.body;
 
+    console.log("🔍 [compute-capacity] Request received:", { org, project, team, iterationPaths });
+
     if (!org || !project || !team) {
+      console.error("❌ [compute-capacity] Missing required fields:", { org, project, team });
       return res.status(400).json({ error: "Missing org/project/team" });
     }
 
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
+      console.error("❌ [compute-capacity] Invalid auth header");
       return res.status(401).json({ error: "Missing token" });
     }
     const accessToken = authHeader.replace("Bearer ", "");
@@ -428,13 +432,20 @@ router.post("/compute-capacity", authMiddleware, async (req, res) => {
       return count;
     }
 
-    // 1️⃣ fetch team iterations (if iterationPaths not provided, take next 3 iterations)
-    const iterationsRes = await axios.get<any>(
-      `https://dev.azure.com/${org}/${project}/${team}/_apis/work/teamsettings/iterations?api-version=7.0`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
-    );
-
-    let iterations: any[] = iterationsRes.data?.value || [];
+    // 1️⃣ fetch team iterations
+    console.log(`📋 [compute-capacity] Fetching iterations from: https://dev.azure.com/${org}/${project}/${team}/_apis/work/teamsettings/iterations`);
+    let iterations: any[] = [];
+    try {
+      const iterationsRes = await axios.get<any>(
+        `https://dev.azure.com/${org}/${project}/${team}/_apis/work/teamsettings/iterations?api-version=7.0`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      iterations = iterationsRes.data?.value || [];
+      console.log(`✅ [compute-capacity] Fetched ${iterations.length} iterations`);
+    } catch (e) {
+      console.error(`❌ [compute-capacity] Failed to fetch iterations:`, (e as any)?.response?.status, (e as any)?.message);
+      throw e;
+    }
 
     // map to objects with start/finish dates
     const mapped = iterations
@@ -445,6 +456,8 @@ router.post("/compute-capacity", authMiddleware, async (req, res) => {
       }))
       .filter((it: any) => it.start && it.finish)
       .sort((a: any, b: any) => a.start.getTime() - b.start.getTime());
+
+    console.log(`📅 [compute-capacity] Mapped ${mapped.length} iterations with valid dates`);
 
     // if caller provided iterationPaths, try to locate them; otherwise choose next 3 by start date
     let targets: any[] = [];
@@ -461,37 +474,38 @@ router.post("/compute-capacity", authMiddleware, async (req, res) => {
     }
 
     if (targets.length < 3) {
-      // fallback: take first 3 mapped
       targets = mapped.slice(0, 3);
     }
 
-    // 2️⃣ fetch team members with their individual capacities and days off
-    let teamMembers: any[] = [];
+    console.log(`🎯 [compute-capacity] Selected ${targets.length} target iterations:`, targets.map(t => t.path));
+
+    // 2️⃣ fetch team member capacities
+    let teamSize = 1;
+    let allIterationCapacities: any[] = [];
+    
     try {
-      const memberListRes = await axios.get<any>(
-        `https://dev.azure.com/${org}/${project}/${team}/_apis/TeamFoundation/Teams/${team}/Members?api-version=6.0`,
+      console.log(`👥 [compute-capacity] Fetching iteration capacities from: https://dev.azure.com/${org}/${project}/${team}/_apis/work/teamsettings/iterations/capacities`);
+      const iterationCapacitiesRes = await axios.get<any>(
+        `https://dev.azure.com/${org}/${project}/${team}/_apis/work/teamsettings/iterations/capacities?api-version=7.0`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
-      teamMembers = Array.isArray(memberListRes.data?.value) ? memberListRes.data.value : [];
+      allIterationCapacities = iterationCapacitiesRes.data?.value || [];
+      console.log(`✅ [compute-capacity] Fetched capacities for ${allIterationCapacities.length} iterations`);
+      
+      // count unique team members from capacity data
+      const memberSet = new Set<string>();
+      allIterationCapacities.forEach((cap: any) => {
+        if (Array.isArray(cap.activities)) {
+          cap.activities.forEach((act: any) => {
+            if (act.name) memberSet.add(act.name);
+          });
+        }
+      });
+      teamSize = memberSet.size || 1;
+      console.log(`👤 [compute-capacity] Team size: ${teamSize} members`);
     } catch (e) {
-      console.warn("Could not fetch team members", (e as any)?.message || e);
-    }
-
-    const teamSize = teamMembers.length || 1;
-
-    // 3️⃣ fetch iteration capacities per member; these include per-member, per-iteration days off
-    const iterationCapacitiesRes = await axios.get<any>(
-      `https://dev.azure.com/${org}/${project}/${team}/_apis/work/teamsettings/iterations/capacities?api-version=7.0`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
-    );
-    const allIterationCapacities: any[] = iterationCapacitiesRes.data?.value || [];
-
-    // helper: count overlap business days between two ranges
-    function overlapBusinessDays(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) {
-      const start = aStart > bStart ? aStart : bStart;
-      const end = aEnd < bEnd ? aEnd : bEnd;
-      if (start > end) return 0;
-      return countBusinessDays(start, end);
+      console.error(`❌ [compute-capacity] Failed to fetch iteration capacities:`, (e as any)?.response?.status, (e as any)?.message);
+      // continue with fallback calculation
     }
 
     const capacities: number[] = [];
@@ -499,45 +513,54 @@ router.post("/compute-capacity", authMiddleware, async (req, res) => {
     for (let i = 0; i < 3; i++) {
       const it = targets[i];
       if (!it || !it.start || !it.finish) {
+        console.warn(`⚠️  [compute-capacity] Sprint ${i} has no iteration, capacity = 0`);
         capacities.push(0);
         continue;
       }
 
       const totalWorkDays = countBusinessDays(it.start, it.finish);
+      console.log(`📊 [compute-capacity] ${it.path}: ${totalWorkDays} business days`);
 
       // sum capacity per member from ADO iteration capacities
-      // ADO returns per-member capacities with daysOff already subtracted
       let totalCapacityForIteration = 0;
       for (const cap of allIterationCapacities) {
-        // match iteration by path or id
         if (cap.iterationPath && cap.iterationPath === it.path) {
-          // cap.activities contains per-member capacity & days off data
           if (Array.isArray(cap.activities)) {
             for (const activity of cap.activities) {
-              // activity has capacityPerDay and daysOff
               const capPerDay = activity.capacityPerDay || 0;
               const daysOff = activity.daysOff || 0;
               const memberWorkDays = totalWorkDays - daysOff;
-              totalCapacityForIteration += Math.max(0, capPerDay * memberWorkDays);
+              const memberCap = Math.max(0, capPerDay * memberWorkDays);
+              totalCapacityForIteration += memberCap;
+              console.log(`    - ${activity.name}: ${capPerDay} SP/day × (${totalWorkDays} - ${daysOff}) days = ${memberCap} SP`);
             }
           }
         }
       }
 
-      // fallback if ADO API doesn't return detailed capacity: use simple formula
-      // capacity = (10 business days * teamSize) - sum(each member's days off)
+      // fallback: use simple formula if no detailed capacity
       if (totalCapacityForIteration === 0 && teamSize > 0) {
-        const baseCapacity = totalWorkDays * teamSize;
-        totalCapacityForIteration = baseCapacity;
+        totalCapacityForIteration = totalWorkDays * teamSize;
+        console.log(`    📌 Using fallback: ${totalWorkDays} days × ${teamSize} members = ${totalCapacityForIteration} SP`);
       }
 
       capacities.push(Math.max(0, totalCapacityForIteration));
+      console.log(`    ✅ Total for ${it.path}: ${capacities[i]} SP`);
     }
 
-    res.json({ capacities: { n: capacities[0] || 0, n1: capacities[1] || 0, n2: capacities[2] || 0 }, iterations: targets.map(t=>t.path) });
+    const result = { capacities: { n: capacities[0] || 0, n1: capacities[1] || 0, n2: capacities[2] || 0 }, iterations: targets.map(t => t.path) };
+    console.log("✅ [compute-capacity] Final result:", result);
+    res.json(result);
   } catch (err) {
-    console.error("Compute capacity error", (err as any)?.message || err);
-    res.status(500).json({ error: "Failed to compute capacities" });
+    console.error("❌ [compute-capacity] Error:", {
+      status: (err as any)?.response?.status,
+      message: (err as any)?.message,
+      data: (err as any)?.response?.data
+    });
+    res.status(500).json({ 
+      error: "Failed to compute capacities",
+      details: (err as any)?.message || String(err)
+    });
   }
 });
 
