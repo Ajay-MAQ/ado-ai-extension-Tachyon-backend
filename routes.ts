@@ -355,6 +355,51 @@ router.post("/create-stories", authMiddleware, async (req, res) => {
   }
 });
 
+// update existing user stories -- used when loading and editing from ADO
+router.post("/update-stories", authMiddleware, async (req, res) => {
+  try {
+    const { org, project, stories } = req.body;
+    if (!org || !project || !Array.isArray(stories)) {
+      return res.status(400).json({ error: "Invalid payload" });
+    }
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Missing token" });
+    }
+    const accessToken = authHeader.replace("Bearer ", "");
+
+    const updatedIds: number[] = [];
+    for (const story of stories) {
+      if (!story.id) continue;
+      const ops: any[] = [];
+      if (story.title !== undefined) {
+        ops.push({ op: "add", path: "/fields/System.Title", value: story.title });
+      }
+      if (story.storyPoints !== undefined) {
+        ops.push({ op: "add", path: "/fields/Microsoft.VSTS.Scheduling.StoryPoints", value: story.storyPoints });
+      }
+      if (ops.length > 0) {
+        await axios.patch(
+          `https://dev.azure.com/${org}/${project}/_apis/wit/workitems/${story.id}?api-version=7.0`,
+          ops,
+          {
+            headers: {
+              "Content-Type": "application/json-patch+json",
+              Authorization: `Bearer ${accessToken}`
+            }
+          }
+        );
+        updatedIds.push(story.id);
+      }
+    }
+    res.json({ success: true, updatedIds });
+  } catch (err) {
+    console.error("Update stories error", err);
+    res.status(500).json({ error: "Update failed" });
+  }
+});
+
 
 /* ===============================
    PROMPT BUILDER
@@ -391,11 +436,9 @@ function buildPrompt(
 
       PLANNING RULES (STRICT):
       1. Follow EXACT story order (do NOT reorder)
-      2. Sprint capacity MUST be completely filled
-      3. Stories MAY be split across sprints
-      4. When splitting:
-        - Allocate only remaining sprint capacity
-        - Carry leftover points forward
+      2. Sprint capacity MUST be completely filled using whole stories
+      3. **Stories MUST NOT be split across sprints.**
+      4. Move a story to the next sprint only when the remaining capacity in the current sprint is less than the story's points
       5. Do NOT modify story points
       6. Do NOT invent stories
       7. Stop if backlog exhausted
