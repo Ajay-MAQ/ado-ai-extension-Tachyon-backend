@@ -401,6 +401,131 @@ router.post("/update-stories", authMiddleware, async (req, res) => {
 });
 
 
+// compute sprint capacities from ADO: team size * (workingDaysInIteration - daysOff)
+router.post("/compute-capacity", authMiddleware, async (req, res) => {
+  try {
+    const { org, project, team, iterationPaths } = req.body;
+
+    if (!org || !project || !team) {
+      return res.status(400).json({ error: "Missing org/project/team" });
+    }
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Missing token" });
+    }
+    const accessToken = authHeader.replace("Bearer ", "");
+
+    // helper: count business days between two dates (inclusive)
+    function countBusinessDays(start: Date, end: Date) {
+      let count = 0;
+      const cur = new Date(start);
+      while (cur <= end) {
+        const day = cur.getDay();
+        if (day !== 0 && day !== 6) count++;
+        cur.setDate(cur.getDate() + 1);
+      }
+      return count;
+    }
+
+    // 1️⃣ fetch team iterations (if iterationPaths not provided, take next 3 iterations)
+    const iterationsRes = await axios.get<any>(
+      `https://dev.azure.com/${org}/${project}/${team}/_apis/work/teamsettings/iterations?api-version=7.0`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+
+    let iterations: any[] = iterationsRes.data?.value || [];
+
+    // map to objects with start/finish dates
+    const mapped = iterations
+      .map((it: any) => ({
+        path: it.path || it.name,
+        start: it.attributes?.startDate ? new Date(it.attributes.startDate) : null,
+        finish: it.attributes?.finishDate ? new Date(it.attributes.finishDate) : null,
+      }))
+      .filter((it: any) => it.start && it.finish)
+      .sort((a: any, b: any) => a.start.getTime() - b.start.getTime());
+
+    // if caller provided iterationPaths, try to locate them; otherwise choose next 3 by start date
+    let targets: any[] = [];
+    if (Array.isArray(iterationPaths) && iterationPaths.length >= 3) {
+      for (const p of iterationPaths.slice(0, 3)) {
+        const found = mapped.find((m: any) => m.path === p || m.path?.endsWith(p));
+        if (found) targets.push(found);
+      }
+    }
+    if (targets.length < 3) {
+      const now = new Date();
+      const upcoming = mapped.filter((m: any) => m.finish >= now);
+      targets = upcoming.slice(0, 3);
+    }
+
+    if (targets.length < 3) {
+      // fallback: take first 3 mapped
+      targets = mapped.slice(0, 3);
+    }
+
+    // 2️⃣ fetch team days off
+    const daysOffRes = await axios.get<any>(
+      `https://dev.azure.com/${org}/${project}/${team}/_apis/work/teamsettings/daysOff?api-version=7.0`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    const daysOffList: any[] = daysOffRes.data?.value || [];
+
+    // 3️⃣ fetch team members
+    let teamSize = 1;
+    try {
+      const membersRes = await axios.get<any>(
+        `https://dev.azure.com/${org}/_apis/teams/${encodeURIComponent(team)}/members?api-version=7.0`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      teamSize = Array.isArray(membersRes.data?.value) ? membersRes.data.value.length : 1;
+    } catch (e) {
+      console.warn("Could not fetch team members, defaulting teamSize=1", (e as any)?.message || e);
+      teamSize = 1;
+    }
+
+    // helper: count overlap business days between two ranges
+    function overlapBusinessDays(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) {
+      const start = aStart > bStart ? aStart : bStart;
+      const end = aEnd < bEnd ? aEnd : bEnd;
+      if (start > end) return 0;
+      return countBusinessDays(start, end);
+    }
+
+    const capacities: number[] = [];
+
+    for (let i = 0; i < 3; i++) {
+      const it = targets[i];
+      if (!it || !it.start || !it.finish) {
+        capacities.push(0);
+        continue;
+      }
+
+      const totalWorkDays = countBusinessDays(it.start, it.finish);
+
+      // compute days off overlapping this iteration
+      let daysOffCount = 0;
+      for (const d of daysOffList) {
+        const ds = d.startDate ? new Date(d.startDate) : null;
+        const de = d.endDate ? new Date(d.endDate) : null;
+        if (!ds || !de) continue;
+        daysOffCount += overlapBusinessDays(it.start, it.finish, ds, de);
+      }
+
+      const availableDays = Math.max(0, totalWorkDays - daysOffCount);
+      const capacity = availableDays * Math.max(1, teamSize);
+      capacities.push(capacity);
+    }
+
+    res.json({ capacities: { n: capacities[0] || 0, n1: capacities[1] || 0, n2: capacities[2] || 0 }, iterations: targets.map(t=>t.path) });
+  } catch (err) {
+    console.error("Compute capacity error", (err as any)?.message || err);
+    res.status(500).json({ error: "Failed to compute capacities" });
+  }
+});
+
+
 /* ===============================
    PROMPT BUILDER
 ================================ */
