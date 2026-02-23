@@ -373,60 +373,64 @@ function buildPrompt(
 
     case "sprintplan":
           return `
-You are an Agile Sprint Planning Assistant.
+      You are an Agile Sprint Planning Assistant.
 
-TASK:
-Allocate the provided user stories across three sprints.
+      TASK:
+      Allocate the provided user stories across three sprints.
 
-INPUT:
-Feature Title: ${title}
+      INPUT:
+      Feature Title: ${title}
 
-Sprint Capacities:
-- Sprint N: ${sprintPoints?.n}
-- Sprint N+1: ${sprintPoints?.n1}
-- Sprint N+2: ${sprintPoints?.n2}
+      Sprint Capacities:
+      - Sprint N: ${sprintPoints?.n}
+      - Sprint N+1: ${sprintPoints?.n1}
+      - Sprint N+2: ${sprintPoints?.n2}
 
-User Stories (in given order):
-${JSON.stringify(stories, null, 2)}
+      User Stories (in given order):
+      ${JSON.stringify(stories, null, 2)}
 
-PLANNING RULES (STRICT):
-1. Keep on filling user stories in the current sprint until adding another story would exceed the sprint's capacity.
-2. Once a sprint is full, move to the next sprint and repeat the process.
+      PLANNING RULES (STRICT):
+      1. Follow EXACT story order (do NOT reorder)
+      2. Sprint capacity MUST be completely filled
+      3. Stories MAY be split across sprints
+      4. When splitting:
+        - Allocate only remaining sprint capacity
+        - Carry leftover points forward
+      5. Do NOT modify story points
+      6. Do NOT invent stories
+      7. Stop if backlog exhausted
 
+      OUTPUT FORMAT (STRICT JSON ONLY):
 
-OUTPUT FORMAT (STRICT JSON ONLY):
+      {
+        "sprints": [
+          {
+            "name": "Sprint N",
+            "capacity": number,
+            "allocatedPoints": number,
+            "stories": [
+              {
+                "id": "string",
+                "title": "string",
+                "allocatedPoints": number,
+                "remainingPoints": number
+              }
+            ]
+          }
+        ],
+        "unallocatedStories": [
+          {
+            "id": "string",
+            "title": "string",
+            "remainingPoints": number
+          }
+        ]
+      }
 
-{
-  "sprints": [
-    {
-      "name": "Sprint N",
-      "capacity": number,
-      "usedPoints": number,
-      "unusedCapacity": number,
-      "stories": [
-        {
-          "id": "string",
-          "title": "string",
-          "storyPoints": number
-        }
-      ]
-    }
-  ],
-  "unallocatedStories": [
-    {
-      "id": "string",
-      "title": "string",
-      "storyPoints": number
-    }
-  ]
-}
-
-VALIDATION:
-- usedPoints ≤ capacity
-- unusedCapacity = capacity - usedPoints
-- No negative numbers
-- JSON must be valid
-
+      VALIDATION:
+      - allocatedPoints MUST equal sprint capacity
+      - No negative numbers
+      - JSON must be valid
 
     `;
 
@@ -542,71 +546,10 @@ VALIDATION:
 
 
     case "description":
-      return `Given User story type = ${type}: user story = ${title}. 
-      
-# SER STORY FORMAT (MANDATORY) 
-User Story description must strictly follow this format:
-    As a <b><user persona></b>, <br>
-    I want <b><goal / capability></b>,<br>
-    So that <b><business value / benefit></b>.<br>
-
-
-### Follow the given example format strictly with tags:
-
-Example Input:
-  Title: "Finalize Output Schema and Spec Kit Execution Framework for FAB Extraction Agents"
-  User story Type: Story
-
-Example Output:
-  As a <b>Developer</b>,<br>
-  <b>I want</b> to finalize the output JSON schema for Loan and Real Estate agents after FAB-driven extraction,<br>
-  <b>So that</b> the Spec Kit prompt lifecycle executes as a single cohesive flow and the system produces consistent, deterministic outputs with reliable document handling.<br>
-
-      
-      `;
+      return `Write a clear, professional Azure DevOps description only in the Gherkin format for the following ${type}: ${title}. Directly give descriptiion no need of heading`;
 
     case "criteria":
-      return `Given User Story: ${title}. add <br> tags at the end of each point
-
-      You MUST strictly follow the structure and rules below.
-
-    Guidelines for Acceptance Criteria:
-    1. Ensure that each criterion is testable and measurable.
-    2. Write criteria in the context of the user persona described in the problem.
-    3. You MUST use EITHER:
-        - Gherkin syntax (Given, When, Then) format for behavioral scenarios, OR
-        - Clear, concise bullet points for testable outcomes.
-    4. DO NOT use both Gherkin and bullet points together.
-    5. Avoid generic statements such as:
-        - Ensure TAD and TS are adhered
-        - Delivered solution does not generate additional issues on servers and browser
-    6. Additional Gherkin scenarios for other user personas can be listed separately if necessary.
-
-  Example Input:
-    Title: "Finalize Output Schema and Spec Kit Execution Framework for FAB Extraction Agents"
-  Example Output:
-
-  Scenario 1: Output JSON schema is finalized and enforced<br>
-      Given the FAB agent completes execution and extraction is successful<br>
-      When the agent produces its final response<br>
-      Then the response strictly conforms to the approved output JSON schema<br>
-      And the schema remains consistent across both Loan and Real Estate agent types<br>
-      And no undocumented or extra fields are present<br>
-      <br>
-\n
-    Scenario 2: Spec Kit prompt framework executes as a unified lifecycle<br>
-      Given a valid input document or payload<br>
-      When the Spec Kit lifecycle runs using the Constitution, Specify, Plan, Task, and Implement prompts<br>
-      Then each prompt executes in the defined order<br>
-      And responsibilities remain clearly separated across prompts<br>
-      And code generation completes successfully<br>
-      <br>
-\n
-"""
-
-
-      
-      `;
+      return `Generate professional acceptance criteria only in the Gherkin format for the following User Story: ${title}. Directly give Acceptance criteria without heading in point vice fashion with <br> tags at the end of each point`;
 
     case "tests":
       return `You are a Senior QA Engineer. Create test cases for: ${title}`;
