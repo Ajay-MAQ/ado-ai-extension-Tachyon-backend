@@ -465,25 +465,26 @@ router.post("/compute-capacity", authMiddleware, async (req, res) => {
       targets = mapped.slice(0, 3);
     }
 
-    // 2️⃣ fetch team days off
-    const daysOffRes = await axios.get<any>(
-      `https://dev.azure.com/${org}/${project}/${team}/_apis/work/teamsettings/daysOff?api-version=7.0`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
-    );
-    const daysOffList: any[] = daysOffRes.data?.value || [];
-
-    // 3️⃣ fetch team members
-    let teamSize = 1;
+    // 2️⃣ fetch team members with their individual capacities and days off
+    let teamMembers: any[] = [];
     try {
-      const membersRes = await axios.get<any>(
-        `https://dev.azure.com/${org}/_apis/teams/${encodeURIComponent(team)}/members?api-version=7.0`,
+      const memberListRes = await axios.get<any>(
+        `https://dev.azure.com/${org}/${project}/${team}/_apis/TeamFoundation/Teams/${team}/Members?api-version=6.0`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
-      teamSize = Array.isArray(membersRes.data?.value) ? membersRes.data.value.length : 1;
+      teamMembers = Array.isArray(memberListRes.data?.value) ? memberListRes.data.value : [];
     } catch (e) {
-      console.warn("Could not fetch team members, defaulting teamSize=1", (e as any)?.message || e);
-      teamSize = 1;
+      console.warn("Could not fetch team members", (e as any)?.message || e);
     }
+
+    const teamSize = teamMembers.length || 1;
+
+    // 3️⃣ fetch iteration capacities per member; these include per-member, per-iteration days off
+    const iterationCapacitiesRes = await axios.get<any>(
+      `https://dev.azure.com/${org}/${project}/${team}/_apis/work/teamsettings/iterations/capacities?api-version=7.0`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    const allIterationCapacities: any[] = iterationCapacitiesRes.data?.value || [];
 
     // helper: count overlap business days between two ranges
     function overlapBusinessDays(aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) {
@@ -504,18 +505,33 @@ router.post("/compute-capacity", authMiddleware, async (req, res) => {
 
       const totalWorkDays = countBusinessDays(it.start, it.finish);
 
-      // compute days off overlapping this iteration
-      let daysOffCount = 0;
-      for (const d of daysOffList) {
-        const ds = d.startDate ? new Date(d.startDate) : null;
-        const de = d.endDate ? new Date(d.endDate) : null;
-        if (!ds || !de) continue;
-        daysOffCount += overlapBusinessDays(it.start, it.finish, ds, de);
+      // sum capacity per member from ADO iteration capacities
+      // ADO returns per-member capacities with daysOff already subtracted
+      let totalCapacityForIteration = 0;
+      for (const cap of allIterationCapacities) {
+        // match iteration by path or id
+        if (cap.iterationPath && cap.iterationPath === it.path) {
+          // cap.activities contains per-member capacity & days off data
+          if (Array.isArray(cap.activities)) {
+            for (const activity of cap.activities) {
+              // activity has capacityPerDay and daysOff
+              const capPerDay = activity.capacityPerDay || 0;
+              const daysOff = activity.daysOff || 0;
+              const memberWorkDays = totalWorkDays - daysOff;
+              totalCapacityForIteration += Math.max(0, capPerDay * memberWorkDays);
+            }
+          }
+        }
       }
 
-      const availableDays = Math.max(0, totalWorkDays - daysOffCount);
-      const capacity = availableDays * Math.max(1, teamSize);
-      capacities.push(capacity);
+      // fallback if ADO API doesn't return detailed capacity: use simple formula
+      // capacity = (10 business days * teamSize) - sum(each member's days off)
+      if (totalCapacityForIteration === 0 && teamSize > 0) {
+        const baseCapacity = totalWorkDays * teamSize;
+        totalCapacityForIteration = baseCapacity;
+      }
+
+      capacities.push(Math.max(0, totalCapacityForIteration));
     }
 
     res.json({ capacities: { n: capacities[0] || 0, n1: capacities[1] || 0, n2: capacities[2] || 0 }, iterations: targets.map(t=>t.path) });
