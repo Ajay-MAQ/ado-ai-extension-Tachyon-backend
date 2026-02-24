@@ -753,7 +753,7 @@ function buildPrompt(
 
 
     case "description":
-      return `Write a clear, professional Azure DevOps description only in the Gherkin format for the following ${type}: ${title}. Directly give descriptiion no need of heading`;
+      return `Write a clear, professional Azure DevOps description only  for the following ${type}: ${title}. Directly give descriptiion no need of heading`;
 
     case "criteria":
       return `Generate professional acceptance criteria only in the Gherkin format for the following User Story: ${title}. Directly give Acceptance criteria without heading in point vice fashion with <br> tags at the end of each point`;
